@@ -10,11 +10,29 @@ import (
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/provisioner"
 )
 
+// Version information (set by goreleaser)
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 type CLI struct {
-	Config string `short:"c" required:"" help:"Path to config file"`
+	Config  string      `short:"c" help:"Path to config file"`
+	Version VersionFlag `name:"version" help:"Print version information"`
 
 	Plan  PlanCmd  `cmd:"" help:"Show execution plan without making changes"`
 	Apply ApplyCmd `cmd:"" help:"Apply the configuration changes"`
+}
+
+type VersionFlag bool
+
+func (v VersionFlag) BeforeApply() error {
+	fmt.Printf("apprun-dedicated-application-provisioner %s\n", version)
+	fmt.Printf("  commit: %s\n", commit)
+	fmt.Printf("  built:  %s\n", date)
+	os.Exit(0)
+	return nil
 }
 
 type PlanCmd struct{}
@@ -35,6 +53,9 @@ func main() {
 }
 
 func (c *PlanCmd) Run(cli *CLI) error {
+	if cli.Config == "" {
+		return fmt.Errorf("--config (-c) is required")
+	}
 	cfg, err := loadConfig(cli.Config)
 	if err != nil {
 		return err
@@ -56,6 +77,9 @@ func (c *PlanCmd) Run(cli *CLI) error {
 }
 
 func (c *ApplyCmd) Run(cli *CLI) error {
+	if cli.Config == "" {
+		return fmt.Errorf("--config (-c) is required")
+	}
 	cfg, err := loadConfig(cli.Config)
 	if err != nil {
 		return err
