@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.8](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.7...v0.0.8) - 2026-01-10
+- feat: add JSON Schema for configuration validation by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/17
+
 ## [v0.0.7](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.6...v0.0.7) - 2026-01-10
 - chore: add golangci-lint configuration by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/15
 
