@@ -11,17 +11,51 @@
 
 ## インストール
 
+### Docker（推奨）
+
+```bash
+docker pull ghcr.io/tokuhirom/apprun-dedicated-application-provisioner:latest
+```
+
+Docker での実行例:
+
+```bash
+docker run --rm \
+  -e SAKURA_ACCESS_TOKEN="your-access-token-uuid" \
+  -e SAKURA_ACCESS_TOKEN_SECRET="your-access-token-secret" \
+  -v $(pwd)/apprun.yaml:/apprun.yaml:ro \
+  ghcr.io/tokuhirom/apprun-dedicated-application-provisioner:latest \
+  plan -c /apprun.yaml
+```
+
+### その他のインストール方法
+
+<details>
+<summary>GitHub Releases からダウンロード</summary>
+
+[Releases ページ](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/releases) から、お使いの OS/アーキテクチャに合ったバイナリをダウンロードしてください。
+
+</details>
+
+<details>
+<summary>go install</summary>
+
 ```bash
 go install github.com/tokuhirom/apprun-dedicated-application-provisioner/cmd/apprun-dedicated-application-provisioner@latest
 ```
 
-または、ソースからビルド:
+</details>
+
+<details>
+<summary>ソースからビルド</summary>
 
 ```bash
 git clone https://github.com/tokuhirom/apprun-dedicated-application-provisioner.git
 cd apprun-dedicated-application-provisioner
 go build -o bin/apprun-dedicated-application-provisioner ./cmd/apprun-dedicated-application-provisioner
 ```
+
+</details>
 
 ## 使い方
 
