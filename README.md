@@ -12,7 +12,7 @@
 ## インストール
 
 ```bash
-go install github.com/tokuhirom/apprun-dedicated-application-provisioner/cmd/apprun-provisioner@latest
+go install github.com/tokuhirom/apprun-dedicated-application-provisioner/cmd/apprun-dedicated-application-provisioner@latest
 ```
 
 または、ソースからビルド:
@@ -20,7 +20,7 @@ go install github.com/tokuhirom/apprun-dedicated-application-provisioner/cmd/app
 ```bash
 git clone https://github.com/tokuhirom/apprun-dedicated-application-provisioner.git
 cd apprun-dedicated-application-provisioner
-go build -o bin/apprun-provisioner ./cmd/apprun-provisioner
+go build -o bin/apprun-dedicated-application-provisioner ./cmd/apprun-dedicated-application-provisioner
 ```
 
 ## 使い方
@@ -35,9 +35,9 @@ export SAKURA_ACCESS_TOKEN_SECRET="your-access-token-secret"
 ### 変更内容の確認 (plan)
 
 ```bash
-apprun-provisioner plan --config apprun.yaml
+apprun-dedicated-application-provisioner plan --config apprun.yaml
 # または
-apprun-provisioner plan -c apprun.yaml
+apprun-dedicated-application-provisioner plan -c apprun.yaml
 ```
 
 出力例:
@@ -57,9 +57,9 @@ Plan: 1 to create, 1 to update, 1 unchanged.
 ### 変更の適用 (apply)
 
 ```bash
-apprun-provisioner apply --config apprun.yaml
+apprun-dedicated-application-provisioner apply --config apprun.yaml
 # または
-apprun-provisioner apply -c apprun.yaml
+apprun-dedicated-application-provisioner apply -c apprun.yaml
 ```
 
 ## 設定ファイル
