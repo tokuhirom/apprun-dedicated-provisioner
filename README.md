@@ -35,10 +35,12 @@ export SAKURA_ACCESS_TOKEN_SECRET="your-access-token-secret"
 ### 変更内容の確認 (plan)
 
 ```bash
-apprun-dedicated-application-provisioner plan --config apprun.yaml
-# または
 apprun-dedicated-application-provisioner plan -c apprun.yaml
 ```
+
+| オプション | 説明 |
+|-----------|------|
+| `--config`, `-c` | 設定ファイルのパス（必須） |
 
 出力例:
 ```
@@ -58,13 +60,11 @@ Plan: 1 to create, 1 to update, 1 unchanged.
 
 ```bash
 # バージョンの作成のみ（アクティブ化しない）
-apprun-dedicated-application-provisioner apply --config apprun.yaml
+apprun-dedicated-application-provisioner apply -c apprun.yaml
 
 # バージョンの作成とアクティブ化
-apprun-dedicated-application-provisioner apply --config apprun.yaml --activate
+apprun-dedicated-application-provisioner apply -c apprun.yaml --activate
 ```
-
-#### apply オプション
 
 | オプション | 説明 |
 |-----------|------|
