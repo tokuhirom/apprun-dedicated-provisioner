@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/api"
 )
 

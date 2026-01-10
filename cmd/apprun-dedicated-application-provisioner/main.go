@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/alecthomas/kong"
+
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/config"
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/provisioner"
 )
