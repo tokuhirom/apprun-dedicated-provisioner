@@ -33,6 +33,14 @@ type Plan struct {
 	Actions     []PlannedAction
 }
 
+// ApplyOptions contains options for the Apply operation
+type ApplyOptions struct {
+	// Activate determines whether to activate the version after creating/updating.
+	// If false (default), only creates/updates the version without activating.
+	// If true, also activates the version.
+	Activate bool
+}
+
 // Provisioner handles the synchronization of application configurations
 type Provisioner struct {
 	client *api.Client
@@ -99,7 +107,7 @@ func (p *Provisioner) CreatePlan(ctx context.Context, cfg *config.ClusterConfig)
 }
 
 // Apply executes the given plan
-func (p *Provisioner) Apply(ctx context.Context, cfg *config.ClusterConfig, plan *Plan) error {
+func (p *Provisioner) Apply(ctx context.Context, cfg *config.ClusterConfig, plan *Plan, opts ApplyOptions) error {
 	// Use cluster ID from the plan (already resolved)
 	clusterID := plan.ClusterID
 
@@ -128,12 +136,12 @@ func (p *Provisioner) Apply(ctx context.Context, cfg *config.ClusterConfig, plan
 
 		switch action.Action {
 		case ActionCreate:
-			if err := p.createApplication(ctx, clusterID, appCfg); err != nil {
+			if err := p.createApplication(ctx, clusterID, appCfg, opts); err != nil {
 				return fmt.Errorf("failed to create application %s: %w", action.ApplicationName, err)
 			}
 		case ActionUpdate:
 			existingApp := existingByName[action.ApplicationName]
-			if err := p.updateApplication(ctx, existingApp, appCfg); err != nil {
+			if err := p.updateApplication(ctx, existingApp, appCfg, opts); err != nil {
 				return fmt.Errorf("failed to update application %s: %w", action.ApplicationName, err)
 			}
 		case ActionNoop:
@@ -190,7 +198,7 @@ func (p *Provisioner) compareVersion(current *api.ReadApplicationVersionDetail, 
 	// Compare scaling parameters
 	if desired.ScalingMode == "manual" && desired.FixedScale != nil {
 		if v, ok := current.FixedScale.Get(); !ok || v != *desired.FixedScale {
-			changes = append(changes, fmt.Sprintf("FixedScale changed"))
+			changes = append(changes, "FixedScale changed")
 		}
 	}
 	if desired.ScalingMode == "cpu" {
@@ -312,7 +320,7 @@ func (p *Provisioner) getLatestVersion(ctx context.Context, appID api.Applicatio
 }
 
 // createApplication creates a new application with the given configuration
-func (p *Provisioner) createApplication(ctx context.Context, clusterID uuid.UUID, appCfg *config.ApplicationConfig) error {
+func (p *Provisioner) createApplication(ctx context.Context, clusterID uuid.UUID, appCfg *config.ApplicationConfig, opts ApplyOptions) error {
 	log.Printf("Creating application %q", appCfg.Name)
 
 	// Create the application
@@ -339,22 +347,26 @@ func (p *Provisioner) createApplication(ctx context.Context, clusterID uuid.UUID
 	versionNum := versionResp.ApplicationVersion.Version
 	log.Printf("Created version %d for application %q", versionNum, appCfg.Name)
 
-	// Activate the version
-	updateReq := &api.UpdateApplication{}
-	updateReq.ActiveVersion.SetTo(int32(versionNum))
-	err = p.client.UpdateApplication(ctx, updateReq, api.UpdateApplicationParams{
-		ApplicationID: appID,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to activate version: %w", err)
-	}
+	// Activate the version only if requested
+	if opts.Activate {
+		updateReq := &api.UpdateApplication{}
+		updateReq.ActiveVersion.SetTo(int32(versionNum))
+		err = p.client.UpdateApplication(ctx, updateReq, api.UpdateApplicationParams{
+			ApplicationID: appID,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to activate version: %w", err)
+		}
 
-	log.Printf("Activated version %d for application %q", versionNum, appCfg.Name)
+		log.Printf("Activated version %d for application %q", versionNum, appCfg.Name)
+	} else {
+		log.Printf("Skipped activation for application %q (use --activate to activate)", appCfg.Name)
+	}
 	return nil
 }
 
-// updateApplication creates a new version and activates it
-func (p *Provisioner) updateApplication(ctx context.Context, existing *api.ReadApplicationDetail, appCfg *config.ApplicationConfig) error {
+// updateApplication creates a new version and optionally activates it
+func (p *Provisioner) updateApplication(ctx context.Context, existing *api.ReadApplicationDetail, appCfg *config.ApplicationConfig, opts ApplyOptions) error {
 	log.Printf("Updating application %q", appCfg.Name)
 
 	// Get the latest version to inherit settings
@@ -375,17 +387,21 @@ func (p *Provisioner) updateApplication(ctx context.Context, existing *api.ReadA
 	versionNum := versionResp.ApplicationVersion.Version
 	log.Printf("Created version %d for application %q", versionNum, appCfg.Name)
 
-	// Activate the version
-	updateReq := &api.UpdateApplication{}
-	updateReq.ActiveVersion.SetTo(int32(versionNum))
-	err = p.client.UpdateApplication(ctx, updateReq, api.UpdateApplicationParams{
-		ApplicationID: existing.ApplicationID,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to activate version: %w", err)
-	}
+	// Activate the version only if requested
+	if opts.Activate {
+		updateReq := &api.UpdateApplication{}
+		updateReq.ActiveVersion.SetTo(int32(versionNum))
+		err = p.client.UpdateApplication(ctx, updateReq, api.UpdateApplicationParams{
+			ApplicationID: existing.ApplicationID,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to activate version: %w", err)
+		}
 
-	log.Printf("Activated version %d for application %q", versionNum, appCfg.Name)
+		log.Printf("Activated version %d for application %q", versionNum, appCfg.Name)
+	} else {
+		log.Printf("Skipped activation for application %q (use --activate to activate)", appCfg.Name)
+	}
 	return nil
 }
 

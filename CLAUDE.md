@@ -29,8 +29,11 @@ export SAKURA_ACCESS_TOKEN_SECRET="<secret>"
 # Preview changes (dry-run)
 ./bin/apprun-dedicated-application-provisioner plan -c config.yaml
 
-# Apply changes
+# Apply changes (create/update version only, no activation)
 ./bin/apprun-dedicated-application-provisioner apply -c config.yaml
+
+# Apply changes and activate version
+./bin/apprun-dedicated-application-provisioner apply -c config.yaml --activate
 ```
 
 ## Architecture
@@ -50,6 +53,7 @@ api/                            → Auto-generated OpenAPI client
 ### Key Design Patterns
 
 - **Plan/Apply workflow**: Changes are previewed before execution
+- **Activation separation**: Version creation and activation are separate (--activate flag required for activation)
 - **Configuration inheritance**: Image field inherited from existing version (enables CI/CD separation)
 - **Cluster-based organization**: Applications grouped by cluster
 
@@ -65,6 +69,16 @@ api/                            → Auto-generated OpenAPI client
 Base URL: `https://secure.sakura.ad.jp/cloud/api/apprun-dedicated/1.0`
 
 Main operations: `ListClusters`, `ListApplications`, `CreateApplication`, `UpdateApplication`, `CreateApplicationVersion`
+
+## CI/CD
+
+- **CI workflow** (`.github/workflows/ci.yml`): Runs tests and lint on PRs and pushes to main
+- **tagpr workflow** (`.github/workflows/tagpr.yml`): Manages releases via pull requests using [tagpr](https://github.com/Songmu/tagpr)
+
+Release flow:
+1. Push changes to main
+2. tagpr creates a release PR with changelog
+3. Merge the release PR to create a new tag/release
 
 ## Configuration Example
 

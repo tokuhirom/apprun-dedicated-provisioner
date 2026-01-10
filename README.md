@@ -57,10 +57,21 @@ Plan: 1 to create, 1 to update, 1 unchanged.
 ### 変更の適用 (apply)
 
 ```bash
+# バージョンの作成のみ（アクティブ化しない）
 apprun-dedicated-application-provisioner apply --config apprun.yaml
-# または
-apprun-dedicated-application-provisioner apply -c apprun.yaml
+
+# バージョンの作成とアクティブ化
+apprun-dedicated-application-provisioner apply --config apprun.yaml --activate
 ```
+
+#### apply オプション
+
+| オプション | 説明 |
+|-----------|------|
+| `--config`, `-c` | 設定ファイルのパス（必須） |
+| `--activate` | 作成/更新したバージョンをアクティブ化する |
+
+**注意**: デフォルトでは `apply` はバージョンの作成/更新のみを行い、アクティブ化は行いません。`--activate` オプションを指定することで、作成/更新したバージョンを即座にアクティブ化できます。これにより、バージョンの作成と本番への反映を分離して管理できます。
 
 ## 設定ファイル
 
