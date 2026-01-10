@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.7](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.6...v0.0.7) - 2026-01-10
+- chore: add golangci-lint configuration by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/15
+
 ## [v0.0.6](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.5...v0.0.6) - 2026-01-10
 - feat: add --version flag to display version information by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/13
 
