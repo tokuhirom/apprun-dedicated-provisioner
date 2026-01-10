@@ -1,0 +1,15 @@
+# tagpr configuration
+# https://github.com/Songmu/tagpr
+
+[tagpr]
+# version file (optional - if you have a VERSION file)
+# versionFile = VERSION
+
+# release branch
+releaseBranch = main
+
+# version command (optional)
+# command = go version
+
+# labels for the release PR
+labels = release

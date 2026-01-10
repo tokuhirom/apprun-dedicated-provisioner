@@ -19,7 +19,9 @@ type CLI struct {
 
 type PlanCmd struct{}
 
-type ApplyCmd struct{}
+type ApplyCmd struct {
+	Activate bool `help:"Activate the created/updated version after apply"`
+}
 
 func main() {
 	var cli CLI
@@ -88,7 +90,10 @@ func (c *ApplyCmd) Run(cli *CLI) error {
 
 	fmt.Println("\nApplying changes...")
 
-	if err := p.Apply(ctx, cfg, plan); err != nil {
+	opts := provisioner.ApplyOptions{
+		Activate: c.Activate,
+	}
+	if err := p.Apply(ctx, cfg, plan, opts); err != nil {
 		return fmt.Errorf("failed to apply plan: %w", err)
 	}
 
