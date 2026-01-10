@@ -1,0 +1,32 @@
+name: Validate Schema
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'example.yaml'
+      - 'schema.json'
+      - '.github/workflows/validate-schema.yml'
+  pull_request:
+    paths:
+      - 'example.yaml'
+      - 'schema.json'
+      - '.github/workflows/validate-schema.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+
+      - name: Install ajv-cli
+        run: npm install -g ajv-cli
+
+      - name: Validate example.yaml against schema
+        run: ajv validate -s schema.json -d example.yaml --spec=draft2020
