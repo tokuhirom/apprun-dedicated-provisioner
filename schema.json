@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tokuhirom/apprun-dedicated-application-provisioner/schema.json",
+  "title": "App Run Dedicated Application Provisioner Configuration",
+  "description": "Configuration schema for apprun-dedicated-application-provisioner",
+  "type": "object",
+  "required": ["clusterName", "applications"],
+  "additionalProperties": false,
+  "properties": {
+    "clusterName": {
+      "type": "string",
+      "description": "Target cluster name",
+      "minLength": 1
+    },
+    "applications": {
+      "type": "array",
+      "description": "List of application configurations",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/application"
+      }
+    }
+  },
+  "$defs": {
+    "application": {
+      "type": "object",
+      "description": "Application configuration",
+      "required": ["name", "spec"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Application name (must be unique within cluster)",
+          "minLength": 1
+        },
+        "spec": {
+          "$ref": "#/$defs/applicationSpec"
+        }
+      }
+    },
+    "applicationSpec": {
+      "type": "object",
+      "description": "Application specification",
+      "additionalProperties": false,
+      "properties": {
+        "cpu": {
+          "type": "integer",
+          "description": "CPU in mCPU",
+          "minimum": 100,
+          "maximum": 64000
+        },
+        "memory": {
+          "type": "integer",
+          "description": "Memory in MB",
+          "minimum": 128,
+          "maximum": 131072
+        },
+        "scalingMode": {
+          "type": "string",
+          "description": "Scaling mode",
+          "enum": ["manual", "cpu"]
+        },
+        "fixedScale": {
+          "type": "integer",
+          "description": "Fixed scale count (for manual scaling mode)",
+          "minimum": 1
+        },
+        "minScale": {
+          "type": "integer",
+          "description": "Minimum scale count (for cpu scaling mode)",
+          "minimum": 0
+        },
+        "maxScale": {
+          "type": "integer",
+          "description": "Maximum scale count (for cpu scaling mode)",
+          "minimum": 1
+        },
+        "scaleInThreshold": {
+          "type": "integer",
+          "description": "Scale in threshold percentage (for cpu scaling mode)",
+          "minimum": 30,
+          "maximum": 70
+        },
+        "scaleOutThreshold": {
+          "type": "integer",
+          "description": "Scale out threshold percentage (for cpu scaling mode)",
+          "minimum": 50,
+          "maximum": 99
+        },
+        "image": {
+          "type": "string",
+          "description": "Container image (required for new applications)"
+        },
+        "cmd": {
+          "type": "array",
+          "description": "Command to run",
+          "items": {
+            "type": "string"
+          }
+        },
+        "registryUsername": {
+          "type": "string",
+          "description": "Container registry username"
+        },
+        "registryPassword": {
+          "type": "string",
+          "description": "Container registry password"
+        },
+        "exposedPorts": {
+          "type": "array",
+          "description": "Exposed port configurations",
+          "items": {
+            "$ref": "#/$defs/exposedPort"
+          }
+        },
+        "env": {
+          "type": "array",
+          "description": "Environment variables",
+          "items": {
+            "$ref": "#/$defs/envVar"
+          }
+        }
+      }
+    },
+    "exposedPort": {
+      "type": "object",
+      "description": "Exposed port configuration",
+      "required": ["targetPort", "useLetsEncrypt"],
+      "additionalProperties": false,
+      "properties": {
+        "targetPort": {
+          "type": "integer",
+          "description": "Port the application listens on",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "loadBalancerPort": {
+          "type": ["integer", "null"],
+          "description": "External port via load balancer (null if not exposed)",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "useLetsEncrypt": {
+          "type": "boolean",
+          "description": "Enable Let's Encrypt for HTTPS"
+        },
+        "host": {
+          "type": "array",
+          "description": "Hostnames for HTTP/HTTPS routing",
+          "items": {
+            "type": "string"
+          }
+        },
+        "healthCheck": {
+          "$ref": "#/$defs/healthCheck"
+        }
+      }
+    },
+    "healthCheck": {
+      "type": "object",
+      "description": "Health check configuration",
+      "required": ["path", "intervalSeconds", "timeoutSeconds"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Health check endpoint path"
+        },
+        "intervalSeconds": {
+          "type": "integer",
+          "description": "Check interval in seconds",
+          "minimum": 1
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "description": "Check timeout in seconds",
+          "minimum": 1
+        }
+      }
+    },
+    "envVar": {
+      "type": "object",
+      "description": "Environment variable",
+      "required": ["key", "secret"],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Environment variable name",
+          "minLength": 1
+        },
+        "value": {
+          "type": "string",
+          "description": "Environment variable value"
+        },
+        "secret": {
+          "type": "boolean",
+          "description": "Mark as secret (value cannot be retrieved via API)"
+        }
+      }
+    }
+  }
+}
