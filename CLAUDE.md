@@ -70,14 +70,24 @@ Base URL: `https://secure.sakura.ad.jp/cloud/api/apprun-dedicated/1.0`
 
 Main operations: `ListClusters`, `ListApplications`, `CreateApplication`, `UpdateApplication`, `CreateApplicationVersion`
 
+## Git Workflow
+
+**Important: main branch is protected. Do not commit directly to main.**
+
+All changes must go through pull requests:
+1. Create a feature branch from main (`git checkout -b feature/xxx`)
+2. Make changes and commit
+3. Push the branch and create a PR
+4. After review/CI passes, merge the PR
+
 ## CI/CD
 
 - **CI workflow** (`.github/workflows/ci.yml`): Runs tests and lint on PRs and pushes to main
 - **tagpr workflow** (`.github/workflows/tagpr.yml`): Manages releases via pull requests using [tagpr](https://github.com/Songmu/tagpr)
 
 Release flow:
-1. Push changes to main
-2. tagpr creates a release PR with changelog
+1. Merge feature PRs to main
+2. tagpr automatically creates a release PR with changelog
 3. Merge the release PR to create a new tag/release
 
 ## Configuration Example
