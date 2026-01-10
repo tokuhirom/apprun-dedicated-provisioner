@@ -13,3 +13,5 @@ releaseBranch = main
 
 # labels for the release PR
 labels = release
+	vPrefix = true
+	versionFile = -
