@@ -45,46 +45,23 @@ changelog:
       - Merge branch
 
 dockers_v2:
-  - ids:
+  - id: apprun-dedicated-application-provisioner
+    ids:
       - apprun-dedicated-application-provisioner
-    goos: linux
-    goarch: amd64
-    image_templates:
-      - "ghcr.io/tokuhirom/{{ .ProjectName }}:{{ .Version }}-amd64"
     dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-      - "--label=org.opencontainers.image.source={{ .GitURL }}"
-      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-
-  - ids:
-      - apprun-dedicated-application-provisioner
-    goos: linux
-    goarch: arm64
-    image_templates:
-      - "ghcr.io/tokuhirom/{{ .ProjectName }}:{{ .Version }}-arm64"
-    dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - "--platform=linux/arm64"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-      - "--label=org.opencontainers.image.source={{ .GitURL }}"
-      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-
-docker_manifests_v2:
-  - name_template: "ghcr.io/tokuhirom/{{ .ProjectName }}:{{ .Version }}"
-    image_templates:
-      - "ghcr.io/tokuhirom/{{ .ProjectName }}:{{ .Version }}-amd64"
-      - "ghcr.io/tokuhirom/{{ .ProjectName }}:{{ .Version }}-arm64"
-
-  - name_template: "ghcr.io/tokuhirom/{{ .ProjectName }}:latest"
-    image_templates:
-      - "ghcr.io/tokuhirom/{{ .ProjectName }}:{{ .Version }}-amd64"
-      - "ghcr.io/tokuhirom/{{ .ProjectName }}:{{ .Version }}-arm64"
+    images:
+      - "ghcr.io/tokuhirom/{{ .ProjectName }}"
+    tags:
+      - "{{ .Version }}"
+      - latest
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      "org.opencontainers.image.title": "{{ .ProjectName }}"
+      "org.opencontainers.image.version": "{{ .Version }}"
+      "org.opencontainers.image.source": "{{ .GitURL }}"
+      "org.opencontainers.image.revision": "{{ .FullCommit }}"
 
 release:
   github:
