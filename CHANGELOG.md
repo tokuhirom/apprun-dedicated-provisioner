@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.9](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.8...v0.0.9) - 2026-01-10
+- fix: update goreleaser config for v2.12+ compatibility by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/19
+
 ## [v0.0.8](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.7...v0.0.8) - 2026-01-10
 - feat: add JSON Schema for configuration validation by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/17
 
