@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/google/uuid"
+
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/api"
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/config"
 )
@@ -530,9 +531,9 @@ func (p *Provisioner) buildCreateVersionRequestWithBase(v *config.ApplicationSpe
 		// Inherit from existing version
 		for _, port := range base.ExposedPorts {
 			ep := api.ExposedPort{
-				TargetPort:     port.TargetPort,
-				UseLetsEncrypt: port.UseLetsEncrypt,
-				Host:           port.Host,
+				TargetPort:       port.TargetPort,
+				UseLetsEncrypt:   port.UseLetsEncrypt,
+				Host:             port.Host,
 				LoadBalancerPort: port.LoadBalancerPort,
 				HealthCheck:      port.HealthCheck,
 			}
