@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.5](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.4...v0.0.5) - 2026-01-10
+- Fix goreleaser deprecation warnings by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/11
+
 ## [v0.0.4](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.3...v0.0.4) - 2026-01-10
 - Update README: reorganize installation methods by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/9
 
