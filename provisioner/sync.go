@@ -101,7 +101,7 @@ func (p *Provisioner) CreatePlan(ctx context.Context, cfg *config.ClusterConfig)
 
 	// Warn about applications not in config
 	for name := range existingByName {
-		log.Printf("WARNING: Application %q exists in App Run but not in config", name)
+		log.Printf("WARNING: Application %q exists in AppRun but not in config", name)
 	}
 
 	return plan, nil

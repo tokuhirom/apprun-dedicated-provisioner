@@ -1,6 +1,6 @@
 # apprun-dedicated-application-provisioner
 
-さくらのクラウド App Run 専有型のアプリケーション設定を YAML ファイルで管理し、同期するツールです。
+さくらのクラウド AppRun 専有型のアプリケーション設定を YAML ファイルで管理し、同期するツールです。
 
 ## 特徴
 

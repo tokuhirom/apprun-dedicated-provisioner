@@ -46,7 +46,7 @@ func main() {
 	var cli CLI
 	ctx := kong.Parse(&cli,
 		kong.Name("apprun-provisioner"),
-		kong.Description("Provision App Run Dedicated applications from YAML configuration"),
+		kong.Description("Provision AppRun Dedicated applications from YAML configuration"),
 	)
 
 	err := ctx.Run(&cli)
