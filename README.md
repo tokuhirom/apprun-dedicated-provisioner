@@ -109,6 +109,81 @@ apprun-dedicated-application-provisioner apply -c apprun.yaml --activate
 
 **注意**: デフォルトでは `apply` はバージョンの作成/更新のみを行い、アクティブ化は行いません。`--activate` オプションを指定することで、作成/更新したバージョンを即座にアクティブ化できます。これにより、バージョンの作成と本番への反映を分離して管理できます。
 
+### バージョン一覧の表示 (versions)
+
+```bash
+apprun-dedicated-application-provisioner versions -c apprun.yaml --app webapp
+```
+
+| オプション | 説明 |
+|-----------|------|
+| `--config`, `-c` | 設定ファイルのパス（必須） |
+| `--app` | アプリケーション名（必須） |
+
+出力例:
+```
+Application: webapp (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+
+VERSION  IMAGE                          CREATED              NODES  STATUS
+3        nginx:1.25                     2024-01-15 10:30:00  2      active
+2        nginx:1.24                     2024-01-10 09:00:00  0
+1        nginx:1.23                     2024-01-05 08:00:00  0
+
+Total: 3 versions
+Active version: 3
+Latest version: 3
+```
+
+### バージョン間の差分表示 (diff)
+
+```bash
+# アクティブバージョンと最新バージョンの差分を表示（デフォルト）
+apprun-dedicated-application-provisioner diff -c apprun.yaml --app webapp
+
+# 特定のバージョン間の差分を表示
+apprun-dedicated-application-provisioner diff -c apprun.yaml --app webapp --from 1 --to 3
+```
+
+| オプション | 説明 |
+|-----------|------|
+| `--config`, `-c` | 設定ファイルのパス（必須） |
+| `--app` | アプリケーション名（必須） |
+| `--from` | 比較元バージョン（デフォルト: アクティブバージョン） |
+| `--to` | 比較先バージョン（デフォルト: 最新バージョン） |
+
+出力例:
+```
+Application: webapp
+Comparing version 2 → 3
+
+  CPU: 500 -> 1000
+  Memory: 1024 -> 2048
+  Image: nginx:1.24 -> nginx:1.25
+  Env add: NEW_VAR=value
+  Env update: LOG_LEVEL=debug -> info
+  Env remove: OLD_VAR
+
+Note: secret env values and registryPassword cannot be compared (values not returned by API)
+```
+
+**注意**: `secret: true` の環境変数と `registryPassword` は API から値が返されないため、完全な比較ができません。これらが存在する場合は注意メッセージが表示されます。
+
+### バージョンのアクティブ化 (activate)
+
+```bash
+# 最新バージョンをアクティブ化（デフォルト）
+apprun-dedicated-application-provisioner activate -c apprun.yaml --app webapp
+
+# 特定のバージョンをアクティブ化
+apprun-dedicated-application-provisioner activate -c apprun.yaml --app webapp -t 2
+```
+
+| オプション | 説明 |
+|-----------|------|
+| `--config`, `-c` | 設定ファイルのパス（必須） |
+| `--app` | アプリケーション名（必須） |
+| `--target`, `-t` | アクティブ化するバージョン（デフォルト: 最新バージョン） |
+
 ## 設定ファイル
 
 ### 基本構造
