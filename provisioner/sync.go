@@ -2,10 +2,12 @@ package provisioner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 
 	"github.com/google/uuid"
+	"github.com/ogen-go/ogen/ogenerrors"
 
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/api"
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/config"
@@ -70,7 +72,7 @@ func (p *Provisioner) CreatePlan(ctx context.Context, cfg *config.ClusterConfig)
 	// Get existing applications
 	existing, err := p.listAllApplications(ctx, clusterID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list applications: %w", err)
+		return nil, wrapAPIError(err, "failed to list applications")
 	}
 
 	// Build a map of existing applications by name
@@ -115,7 +117,7 @@ func (p *Provisioner) Apply(ctx context.Context, cfg *config.ClusterConfig, plan
 	// Get existing applications for lookup
 	existing, err := p.listAllApplications(ctx, clusterID)
 	if err != nil {
-		return fmt.Errorf("failed to list applications: %w", err)
+		return wrapAPIError(err, "failed to list applications")
 	}
 
 	existingByName := make(map[string]*api.ReadApplicationDetail)
@@ -163,7 +165,7 @@ func (p *Provisioner) planUpdate(ctx context.Context, existing *api.ReadApplicat
 	// Get the latest version
 	latestVersion, err := p.getLatestVersion(ctx, existing.ApplicationID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get latest version: %w", err)
+		return nil, wrapAPIError(err, "failed to get latest version")
 	}
 
 	if latestVersion == nil {
@@ -244,7 +246,7 @@ func (p *Provisioner) resolveClusterID(ctx context.Context, clusterName string) 
 			Cursor:   cursor,
 		})
 		if err != nil {
-			return uuid.UUID{}, fmt.Errorf("failed to list clusters: %w", err)
+			return uuid.UUID{}, wrapAPIError(err, "failed to list clusters")
 		}
 
 		for _, cluster := range resp.Clusters {
@@ -336,7 +338,7 @@ func (p *Provisioner) createApplication(ctx context.Context, clusterID uuid.UUID
 		ClusterID: api.ClusterID(clusterID),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create application: %w", err)
+		return wrapAPIError(err, "failed to create application")
 	}
 
 	appID := createResp.Application.ApplicationID
@@ -348,7 +350,7 @@ func (p *Provisioner) createApplication(ctx context.Context, clusterID uuid.UUID
 		ApplicationID: appID,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create version: %w", err)
+		return wrapAPIError(err, "failed to create version")
 	}
 
 	versionNum := versionResp.ApplicationVersion.Version
@@ -362,7 +364,7 @@ func (p *Provisioner) createApplication(ctx context.Context, clusterID uuid.UUID
 			ApplicationID: appID,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to activate version: %w", err)
+			return wrapAPIError(err, "failed to activate version")
 		}
 
 		log.Printf("Activated version %d for application %q", versionNum, appCfg.Name)
@@ -379,7 +381,7 @@ func (p *Provisioner) updateApplication(ctx context.Context, existing *api.ReadA
 	// Get the latest version to inherit settings
 	latestVersion, err := p.getLatestVersion(ctx, existing.ApplicationID)
 	if err != nil {
-		return fmt.Errorf("failed to get latest version: %w", err)
+		return wrapAPIError(err, "failed to get latest version")
 	}
 
 	// Create the new version (merge with existing settings)
@@ -388,7 +390,7 @@ func (p *Provisioner) updateApplication(ctx context.Context, existing *api.ReadA
 		ApplicationID: existing.ApplicationID,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create version: %w", err)
+		return wrapAPIError(err, "failed to create version")
 	}
 
 	versionNum := versionResp.ApplicationVersion.Version
@@ -402,7 +404,7 @@ func (p *Provisioner) updateApplication(ctx context.Context, existing *api.ReadA
 			ApplicationID: existing.ApplicationID,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to activate version: %w", err)
+			return wrapAPIError(err, "failed to activate version")
 		}
 
 		log.Printf("Activated version %d for application %q", versionNum, appCfg.Name)
@@ -576,4 +578,19 @@ func (p *Provisioner) buildCreateVersionRequestWithBase(v *config.ApplicationSpe
 	}
 
 	return req
+}
+
+// wrapAPIError wraps an API error with additional context, including response body if available
+func wrapAPIError(err error, message string) error {
+	if err == nil {
+		return nil
+	}
+
+	// Try to extract the response body from DecodeBodyError
+	var decodeErr *ogenerrors.DecodeBodyError
+	if errors.As(err, &decodeErr) && len(decodeErr.Body) > 0 {
+		return fmt.Errorf("%s: %w\nResponse body: %s", message, err, string(decodeErr.Body))
+	}
+
+	return fmt.Errorf("%s: %w", message, err)
 }
