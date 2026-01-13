@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.14](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.13...v0.0.14) - 2026-01-13
+- fix: add Cmd and registryUsername comparison in change detection by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/31
+
 ## [v0.0.13](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.12...v0.0.13) - 2026-01-13
 - fix: add Cmd comparison in change detection by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/29
 
