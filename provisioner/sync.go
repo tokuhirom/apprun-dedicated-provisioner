@@ -255,81 +255,20 @@ func (p *Provisioner) planUpdate(ctx context.Context, existing *api.ReadApplicat
 
 // compareVersion compares the current version with desired config and returns list of changes
 func (p *Provisioner) compareVersion(appName string, current *api.ReadApplicationVersionDetail, desired *config.ApplicationSpec) []string {
-	var changes []string
+	// Use normalized structs for comparison (excluding Image which is inherited)
+	currentNorm := NormalizeFromAPI(current)
+	desiredNorm := NormalizeFromConfig(desired)
 
-	if current.CPU != desired.CPU {
-		changes = append(changes, fmt.Sprintf("CPU: %d -> %d", current.CPU, desired.CPU))
-	}
-	if current.Memory != desired.Memory {
-		changes = append(changes, fmt.Sprintf("Memory: %d -> %d", current.Memory, desired.Memory))
-	}
-	if string(current.ScalingMode) != desired.ScalingMode {
-		changes = append(changes, fmt.Sprintf("ScalingMode: %s -> %s", current.ScalingMode, desired.ScalingMode))
+	specChanges, err := CompareSpecs(currentNorm, desiredNorm, CompareSpecsOptions{SkipImage: true})
+	if err != nil {
+		log.Printf("Warning: failed to compare specs: %v", err)
 	}
 
-	// Compare scaling parameters
-	if desired.ScalingMode == "manual" && desired.FixedScale != nil {
-		if v, ok := current.FixedScale.Get(); !ok {
-			changes = append(changes, fmt.Sprintf("FixedScale: (unset) -> %d", *desired.FixedScale))
-		} else if v != *desired.FixedScale {
-			changes = append(changes, fmt.Sprintf("FixedScale: %d -> %d", v, *desired.FixedScale))
-		}
-	}
-	if desired.ScalingMode == "cpu" {
-		if desired.MinScale != nil {
-			if v, ok := current.MinScale.Get(); !ok {
-				changes = append(changes, fmt.Sprintf("MinScale: (unset) -> %d", *desired.MinScale))
-			} else if v != *desired.MinScale {
-				changes = append(changes, fmt.Sprintf("MinScale: %d -> %d", v, *desired.MinScale))
-			}
-		}
-		if desired.MaxScale != nil {
-			if v, ok := current.MaxScale.Get(); !ok {
-				changes = append(changes, fmt.Sprintf("MaxScale: (unset) -> %d", *desired.MaxScale))
-			} else if v != *desired.MaxScale {
-				changes = append(changes, fmt.Sprintf("MaxScale: %d -> %d", v, *desired.MaxScale))
-			}
-		}
-		if desired.ScaleInThreshold != nil {
-			if v, ok := current.ScaleInThreshold.Get(); !ok {
-				changes = append(changes, fmt.Sprintf("ScaleInThreshold: (unset) -> %d", *desired.ScaleInThreshold))
-			} else if v != *desired.ScaleInThreshold {
-				changes = append(changes, fmt.Sprintf("ScaleInThreshold: %d -> %d", v, *desired.ScaleInThreshold))
-			}
-		}
-		if desired.ScaleOutThreshold != nil {
-			if v, ok := current.ScaleOutThreshold.Get(); !ok {
-				changes = append(changes, fmt.Sprintf("ScaleOutThreshold: (unset) -> %d", *desired.ScaleOutThreshold))
-			} else if v != *desired.ScaleOutThreshold {
-				changes = append(changes, fmt.Sprintf("ScaleOutThreshold: %d -> %d", v, *desired.ScaleOutThreshold))
-			}
-		}
-	}
+	changes := specChanges
 
-	// Compare exposed ports
-	portChanges := p.compareExposedPorts(current.ExposedPorts, desired.ExposedPorts)
-	changes = append(changes, portChanges...)
-
-	// Compare env variables
+	// Compare env variables (uses state file for secret version tracking)
 	envChanges := p.compareEnv(appName, current.Env, desired.Env)
 	changes = append(changes, envChanges...)
-
-	// Compare Cmd
-	if !stringSlicesEqual(current.Cmd, desired.Cmd) {
-		changes = append(changes, fmt.Sprintf("Cmd: %v -> %v", current.Cmd, desired.Cmd))
-	}
-
-	// Compare registry credentials
-	serverHasRegistryUser := !current.RegistryUsername.IsNull() && current.RegistryUsername.Value != ""
-	desiredHasRegistryUser := desired.RegistryUsername != nil && *desired.RegistryUsername != ""
-
-	if !serverHasRegistryUser && desiredHasRegistryUser {
-		changes = append(changes, fmt.Sprintf("RegistryUsername: (unset) -> %s", *desired.RegistryUsername))
-	} else if serverHasRegistryUser && !desiredHasRegistryUser {
-		changes = append(changes, fmt.Sprintf("RegistryUsername: %s -> (unset)", current.RegistryUsername.Value))
-	} else if serverHasRegistryUser && desiredHasRegistryUser && current.RegistryUsername.Value != *desired.RegistryUsername {
-		changes = append(changes, fmt.Sprintf("RegistryUsername: %s -> %s", current.RegistryUsername.Value, *desired.RegistryUsername))
-	}
 
 	// Compare registry password version using state file
 	storedVersion := p.state.GetPasswordVersion(appName)
@@ -421,102 +360,6 @@ func (p *Provisioner) compareEnv(appName string, current []api.ReadEnvironmentVa
 	return changes
 }
 
-// compareExposedPorts compares exposed port configurations and returns list of changes
-func (p *Provisioner) compareExposedPorts(current []api.ExposedPort, desired []config.ExposedPortConfig) []string {
-	var changes []string
-
-	// Check for count changes first
-	if len(current) != len(desired) {
-		changes = append(changes, fmt.Sprintf("ExposedPorts count: %d -> %d", len(current), len(desired)))
-	}
-
-	// Build maps by targetPort for comparison
-	currentByPort := make(map[int32]api.ExposedPort)
-	for _, port := range current {
-		currentByPort[int32(port.TargetPort)] = port
-	}
-
-	desiredByPort := make(map[int32]config.ExposedPortConfig)
-	for _, port := range desired {
-		desiredByPort[port.TargetPort] = port
-	}
-
-	// Check for added and changed ports
-	for _, desiredPort := range desired {
-		currentPort, exists := currentByPort[desiredPort.TargetPort]
-		if !exists {
-			changes = append(changes, fmt.Sprintf("ExposedPort add: targetPort=%d", desiredPort.TargetPort))
-			continue
-		}
-
-		// Compare fields
-		prefix := fmt.Sprintf("ExposedPort[%d]", desiredPort.TargetPort)
-
-		// LoadBalancerPort
-		currentLBPort := int32(0)
-		currentHasLB := false
-		if !currentPort.LoadBalancerPort.IsNull() {
-			currentLBPort = int32(currentPort.LoadBalancerPort.Value)
-			currentHasLB = true
-		}
-		desiredLBPort := int32(0)
-		desiredHasLB := false
-		if desiredPort.LoadBalancerPort != nil {
-			desiredLBPort = *desiredPort.LoadBalancerPort
-			desiredHasLB = true
-		}
-
-		if currentHasLB && desiredHasLB && currentLBPort != desiredLBPort {
-			changes = append(changes, fmt.Sprintf("%s LoadBalancerPort: %d -> %d", prefix, currentLBPort, desiredLBPort))
-		} else if currentHasLB && !desiredHasLB {
-			changes = append(changes, fmt.Sprintf("%s LoadBalancerPort: %d -> (unset)", prefix, currentLBPort))
-		} else if !currentHasLB && desiredHasLB {
-			changes = append(changes, fmt.Sprintf("%s LoadBalancerPort: (unset) -> %d", prefix, desiredLBPort))
-		}
-
-		// UseLetsEncrypt
-		if currentPort.UseLetsEncrypt != desiredPort.UseLetsEncrypt {
-			changes = append(changes, fmt.Sprintf("%s UseLetsEncrypt: %t -> %t", prefix, currentPort.UseLetsEncrypt, desiredPort.UseLetsEncrypt))
-		}
-
-		// Host
-		if !stringSlicesEqual(currentPort.Host, desiredPort.Host) {
-			changes = append(changes, fmt.Sprintf("%s Host: %v -> %v", prefix, currentPort.Host, desiredPort.Host))
-		}
-
-		// HealthCheck
-		currentHasHC := !currentPort.HealthCheck.IsNull()
-		desiredHasHC := desiredPort.HealthCheck != nil
-
-		if currentHasHC && desiredHasHC {
-			currentHC := currentPort.HealthCheck.Value
-			desiredHC := desiredPort.HealthCheck
-			if currentHC.Path != desiredHC.Path {
-				changes = append(changes, fmt.Sprintf("%s HealthCheck.Path: %s -> %s", prefix, currentHC.Path, desiredHC.Path))
-			}
-			if currentHC.IntervalSeconds != desiredHC.IntervalSeconds {
-				changes = append(changes, fmt.Sprintf("%s HealthCheck.IntervalSeconds: %d -> %d", prefix, currentHC.IntervalSeconds, desiredHC.IntervalSeconds))
-			}
-			if currentHC.TimeoutSeconds != desiredHC.TimeoutSeconds {
-				changes = append(changes, fmt.Sprintf("%s HealthCheck.TimeoutSeconds: %d -> %d", prefix, currentHC.TimeoutSeconds, desiredHC.TimeoutSeconds))
-			}
-		} else if currentHasHC && !desiredHasHC {
-			changes = append(changes, fmt.Sprintf("%s HealthCheck: (set) -> (unset)", prefix))
-		} else if !currentHasHC && desiredHasHC {
-			changes = append(changes, fmt.Sprintf("%s HealthCheck: (unset) -> (set)", prefix))
-		}
-	}
-
-	// Check for removed ports
-	for _, currentPort := range current {
-		if _, exists := desiredByPort[int32(currentPort.TargetPort)]; !exists {
-			changes = append(changes, fmt.Sprintf("ExposedPort remove: targetPort=%d", currentPort.TargetPort))
-		}
-	}
-
-	return changes
-}
-
 // updateSecretEnvVersions updates the state with secret env versions from config
 func (p *Provisioner) updateSecretEnvVersions(appCfg *config.ApplicationConfig) bool {
 	modified := false
@@ -530,19 +373,6 @@ func (p *Provisioner) updateSecretEnvVersions(appCfg *config.ApplicationConfig) 
 		}
 	}
 	return modified
-}
-
-// stringSlicesEqual compares two string slices for equality
-func stringSlicesEqual(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
 
 // resolveClusterID resolves a cluster name to its ID
@@ -1025,120 +855,36 @@ func (p *Provisioner) GetVersionDiff(ctx context.Context, clusterName, appName s
 		return nil, wrapAPIError(err, fmt.Sprintf("failed to get version %d", toVersion))
 	}
 
-	// Compare versions
-	diff := &VersionDiff{
-		FromVersion: fromVersion,
-		ToVersion:   toVersion,
-	}
-
+	// Compare versions using normalized structs
 	from := &fromVersionDetail.ApplicationVersion
 	to := &toVersionDetail.ApplicationVersion
 
-	// Compare fields
-	if from.CPU != to.CPU {
-		diff.Changes = append(diff.Changes, fmt.Sprintf("CPU: %d -> %d", from.CPU, to.CPU))
-	}
-	if from.Memory != to.Memory {
-		diff.Changes = append(diff.Changes, fmt.Sprintf("Memory: %d -> %d", from.Memory, to.Memory))
-	}
-	if from.ScalingMode != to.ScalingMode {
-		diff.Changes = append(diff.Changes, fmt.Sprintf("ScalingMode: %s -> %s", from.ScalingMode, to.ScalingMode))
-	}
-	if from.Image != to.Image {
-		diff.Changes = append(diff.Changes, fmt.Sprintf("Image: %s -> %s", from.Image, to.Image))
+	fromNorm := NormalizeFromAPI(from)
+	toNorm := NormalizeFromAPI(to)
+
+	// Compare specs (including Image for version diff)
+	specChanges, err := CompareSpecs(fromNorm, toNorm, CompareSpecsOptions{SkipImage: false})
+	if err != nil {
+		return nil, fmt.Errorf("failed to compare specs: %w", err)
 	}
 
-	// Compare scaling parameters
-	if fromVal, fromOk := from.FixedScale.Get(); fromOk {
-		if toVal, toOk := to.FixedScale.Get(); toOk {
-			if fromVal != toVal {
-				diff.Changes = append(diff.Changes, fmt.Sprintf("FixedScale: %d -> %d", fromVal, toVal))
-			}
-		} else {
-			diff.Changes = append(diff.Changes, fmt.Sprintf("FixedScale: %d -> (unset)", fromVal))
-		}
-	} else if toVal, toOk := to.FixedScale.Get(); toOk {
-		diff.Changes = append(diff.Changes, fmt.Sprintf("FixedScale: (unset) -> %d", toVal))
-	}
-
-	if fromVal, fromOk := from.MinScale.Get(); fromOk {
-		if toVal, toOk := to.MinScale.Get(); toOk {
-			if fromVal != toVal {
-				diff.Changes = append(diff.Changes, fmt.Sprintf("MinScale: %d -> %d", fromVal, toVal))
-			}
-		} else {
-			diff.Changes = append(diff.Changes, fmt.Sprintf("MinScale: %d -> (unset)", fromVal))
-		}
-	} else if toVal, toOk := to.MinScale.Get(); toOk {
-		diff.Changes = append(diff.Changes, fmt.Sprintf("MinScale: (unset) -> %d", toVal))
-	}
-
-	if fromVal, fromOk := from.MaxScale.Get(); fromOk {
-		if toVal, toOk := to.MaxScale.Get(); toOk {
-			if fromVal != toVal {
-				diff.Changes = append(diff.Changes, fmt.Sprintf("MaxScale: %d -> %d", fromVal, toVal))
-			}
-		} else {
-			diff.Changes = append(diff.Changes, fmt.Sprintf("MaxScale: %d -> (unset)", fromVal))
-		}
-	} else if toVal, toOk := to.MaxScale.Get(); toOk {
-		diff.Changes = append(diff.Changes, fmt.Sprintf("MaxScale: (unset) -> %d", toVal))
-	}
-
-	if fromVal, fromOk := from.ScaleInThreshold.Get(); fromOk {
-		if toVal, toOk := to.ScaleInThreshold.Get(); toOk {
-			if fromVal != toVal {
-				diff.Changes = append(diff.Changes, fmt.Sprintf("ScaleInThreshold: %d -> %d", fromVal, toVal))
-			}
-		} else {
-			diff.Changes = append(diff.Changes, fmt.Sprintf("ScaleInThreshold: %d -> (unset)", fromVal))
-		}
-	} else if toVal, toOk := to.ScaleInThreshold.Get(); toOk {
-		diff.Changes = append(diff.Changes, fmt.Sprintf("ScaleInThreshold: (unset) -> %d", toVal))
-	}
-
-	if fromVal, fromOk := from.ScaleOutThreshold.Get(); fromOk {
-		if toVal, toOk := to.ScaleOutThreshold.Get(); toOk {
-			if fromVal != toVal {
-				diff.Changes = append(diff.Changes, fmt.Sprintf("ScaleOutThreshold: %d -> %d", fromVal, toVal))
-			}
-		} else {
-			diff.Changes = append(diff.Changes, fmt.Sprintf("ScaleOutThreshold: %d -> (unset)", fromVal))
-		}
-	} else if toVal, toOk := to.ScaleOutThreshold.Get(); toOk {
-		diff.Changes = append(diff.Changes, fmt.Sprintf("ScaleOutThreshold: (unset) -> %d", toVal))
-	}
-
-	// Compare Cmd
-	if !stringSlicesEqual(from.Cmd, to.Cmd) {
-		diff.Changes = append(diff.Changes, fmt.Sprintf("Cmd: %v -> %v", from.Cmd, to.Cmd))
-	}
-
-	// Compare registry credentials
-	fromHasReg := !from.RegistryUsername.IsNull() && from.RegistryUsername.Value != ""
-	toHasReg := !to.RegistryUsername.IsNull() && to.RegistryUsername.Value != ""
-
-	if fromHasReg && toHasReg && from.RegistryUsername.Value != to.RegistryUsername.Value {
-		diff.Changes = append(diff.Changes, fmt.Sprintf("RegistryUsername: %s -> %s", from.RegistryUsername.Value, to.RegistryUsername.Value))
-	} else if fromHasReg && !toHasReg {
-		diff.Changes = append(diff.Changes, fmt.Sprintf("RegistryUsername: %s -> (unset)", from.RegistryUsername.Value))
-	} else if !fromHasReg && toHasReg {
-		diff.Changes = append(diff.Changes, fmt.Sprintf("RegistryUsername: (unset) -> %s", to.RegistryUsername.Value))
+	diff := &VersionDiff{
+		FromVersion: fromVersion,
+		ToVersion:   toVersion,
+		Changes:     specChanges,
 	}
 
 	// Check if registryPassword exists (cannot compare values)
+	fromHasReg := !from.RegistryUsername.IsNull() && from.RegistryUsername.Value != ""
+	toHasReg := !to.RegistryUsername.IsNull() && to.RegistryUsername.Value != ""
 	if fromHasReg || toHasReg {
 		diff.HasRegistryPwd = true
 	}
 
-	// Compare env variables
+	// Compare env variables (separate handling for secret detection)
 	envDiff, hasSecrets := p.compareVersionEnv(from.Env, to.Env)
 	diff.Changes = append(diff.Changes, envDiff...)
 	diff.HasSecretEnv = hasSecrets
-
-	// Compare exposed ports
-	portChanges := p.compareVersionExposedPorts(from.ExposedPorts, to.ExposedPorts)
-	diff.Changes = append(diff.Changes, portChanges...)
 
 	return diff, nil
 }
@@ -1212,103 +958,6 @@ func (p *Provisioner) compareVersionEnv(from, to []api.ReadEnvironmentVariable) 
 	}
 
 	return changes, hasSecrets
-}
-
-// compareVersionExposedPorts compares exposed ports between two API versions
-func (p *Provisioner) compareVersionExposedPorts(from, to []api.ExposedPort) []string {
-	var changes []string
-
-	// Check for count changes first
-	if len(from) != len(to) {
-		changes = append(changes, fmt.Sprintf("ExposedPorts count: %d -> %d", len(from), len(to)))
-	}
-
-	// Build maps by targetPort for comparison
-	fromByPort := make(map[int32]api.ExposedPort)
-	for _, port := range from {
-		fromByPort[int32(port.TargetPort)] = port
-	}
-
-	toByPort := make(map[int32]api.ExposedPort)
-	for _, port := range to {
-		toByPort[int32(port.TargetPort)] = port
-	}
-
-	// Check for added and changed ports
-	for _, toPort := range to {
-		targetPort := int32(toPort.TargetPort)
-		fromPort, exists := fromByPort[targetPort]
-		if !exists {
-			changes = append(changes, fmt.Sprintf("ExposedPort add: targetPort=%d", targetPort))
-			continue
-		}
-
-		// Compare fields
-		prefix := fmt.Sprintf("ExposedPort[%d]", targetPort)
-
-		// LoadBalancerPort
-		fromLBPort := int32(0)
-		fromHasLB := false
-		if !fromPort.LoadBalancerPort.IsNull() {
-			fromLBPort = int32(fromPort.LoadBalancerPort.Value)
-			fromHasLB = true
-		}
-		toLBPort := int32(0)
-		toHasLB := false
-		if !toPort.LoadBalancerPort.IsNull() {
-			toLBPort = int32(toPort.LoadBalancerPort.Value)
-			toHasLB = true
-		}
-
-		if fromHasLB && toHasLB && fromLBPort != toLBPort {
-			changes = append(changes, fmt.Sprintf("%s LoadBalancerPort: %d -> %d", prefix, fromLBPort, toLBPort))
-		} else if fromHasLB && !toHasLB {
-			changes = append(changes, fmt.Sprintf("%s LoadBalancerPort: %d -> (unset)", prefix, fromLBPort))
-		} else if !fromHasLB && toHasLB {
-			changes = append(changes, fmt.Sprintf("%s LoadBalancerPort: (unset) -> %d", prefix, toLBPort))
-		}
-
-		// UseLetsEncrypt
-		if fromPort.UseLetsEncrypt != toPort.UseLetsEncrypt {
-			changes = append(changes, fmt.Sprintf("%s UseLetsEncrypt: %t -> %t", prefix, fromPort.UseLetsEncrypt, toPort.UseLetsEncrypt))
-		}
-
-		// Host
-		if !stringSlicesEqual(fromPort.Host, toPort.Host) {
-			changes = append(changes, fmt.Sprintf("%s Host: %v -> %v", prefix, fromPort.Host, toPort.Host))
-		}
-
-		// HealthCheck
-		fromHasHC := !fromPort.HealthCheck.IsNull()
-		toHasHC := !toPort.HealthCheck.IsNull()
-
-		if fromHasHC && toHasHC {
-			fromHC := fromPort.HealthCheck.Value
-			toHC := toPort.HealthCheck.Value
-			if fromHC.Path != toHC.Path {
-				changes = append(changes, fmt.Sprintf("%s HealthCheck.Path: %s -> %s", prefix, fromHC.Path, toHC.Path))
-			}
-			if fromHC.IntervalSeconds != toHC.IntervalSeconds {
-				changes = append(changes, fmt.Sprintf("%s HealthCheck.IntervalSeconds: %d -> %d", prefix, fromHC.IntervalSeconds, toHC.IntervalSeconds))
-			}
-			if fromHC.TimeoutSeconds != toHC.TimeoutSeconds {
-				changes = append(changes, fmt.Sprintf("%s HealthCheck.TimeoutSeconds: %d -> %d", prefix, fromHC.TimeoutSeconds, toHC.TimeoutSeconds))
-			}
-		} else if fromHasHC && !toHasHC {
-			changes = append(changes, fmt.Sprintf("%s HealthCheck: (set) -> (unset)", prefix))
-		} else if !fromHasHC && toHasHC {
-			changes = append(changes, fmt.Sprintf("%s HealthCheck: (unset) -> (set)", prefix))
-		}
-	}
-
-	// Check for removed ports
-	for _, fromPort := range from {
-		if _, exists := toByPort[int32(fromPort.TargetPort)]; !exists {
-			changes = append(changes, fmt.Sprintf("ExposedPort remove: targetPort=%d", fromPort.TargetPort))
-		}
-	}
-
-	return changes
 }
 
 // ActivateVersion activates the specified version (0 means latest)
