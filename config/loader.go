@@ -77,5 +77,10 @@ func validateApplication(app *ApplicationConfig, index int) error {
 		}
 	}
 
+	// Validate registry credentials
+	if v.RegistryPassword != nil && v.RegistryPasswordVersion == nil {
+		return fmt.Errorf("applications[%d]: registryPasswordVersion is required when registryPassword is specified", index)
+	}
+
 	return nil
 }

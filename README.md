@@ -175,10 +175,12 @@ applications:
 | `cmd` | No | 起動コマンド | Yes |
 | `registryUsername` | No | レジストリユーザー名 | Yes |
 | `registryPassword` | No | レジストリパスワード | Yes |
+| `registryPasswordVersion` | No* | パスワードのバージョン番号 | No |
 | `exposedPorts` | No | 公開ポート設定 | Yes |
 | `env` | No | 環境変数 | Yes |
 
-\* 新規アプリケーション作成時は必須
+\* `image`: 新規アプリケーション作成時は必須
+\* `registryPasswordVersion`: `registryPassword` 指定時は必須。パスワード変更時にバージョンを上げることで変更を検出
 
 #### 公開ポート設定 (exposedPorts)
 
@@ -218,7 +220,7 @@ applications:
 - **ファイル名**: `<config名>.apprun-state.json`
   - 例: `apprun.yaml` の場合 → `apprun.apprun-state.json`
 - **保存場所**: 設定ファイル（YAML）と同じディレクトリ
-- **内容**: アプリケーションごとのレジストリパスワードの SHA256 ハッシュ
+- **内容**: アプリケーションごとの `registryPasswordVersion`
 
 ### ファイル構造
 
@@ -227,7 +229,7 @@ applications:
   "version": 1,
   "applications": {
     "webapp": {
-      "registryPasswordHash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "registryPasswordVersion": 1
     }
   }
 }
@@ -235,23 +237,37 @@ applications:
 
 ### 動作
 
-1. **plan 時**: 状態ファイルのハッシュと YAML のパスワードのハッシュを比較し、変更を検出
+1. **plan 時**: 状態ファイルのバージョンと YAML の `registryPasswordVersion` を比較し、変更を検出
 2. **apply 時**: パスワードの変更を適用後、状態ファイルを更新
 
 ### パスワード変更検出ロジック
 
-| YAML の registryPassword | 状態ファイルのハッシュ | 判定 |
-|--------------------------|------------------------|------|
+| YAML の registryPasswordVersion | 状態ファイルのバージョン | 判定 |
+|---------------------------------|--------------------------|------|
 | あり | なし | 変更あり（新規追加） |
-| あり（ハッシュ一致） | あり | 変更なし |
-| あり（ハッシュ不一致） | あり | 変更あり（更新） |
+| あり（一致） | あり | 変更なし |
+| あり（不一致） | あり | 変更あり（更新） |
 | なし | あり | 変更あり（削除） |
 | なし | なし | 変更なし |
 
+### 使用例
+
+パスワードを変更する場合は、`registryPasswordVersion` をインクリメントします：
+
+```yaml
+applications:
+  - name: "webapp"
+    spec:
+      registryUsername: "myuser"
+      registryPassword: "new-secret-password"
+      registryPasswordVersion: 2  # 1 から 2 に変更
+```
+
 ### 注意事項
 
-- 状態ファイルにはパスワードのハッシュ値のみが保存されるため、Git で管理しても安全です
+- 状態ファイルにはバージョン番号のみが保存されるため、Git で管理しても安全です
 - 複数の設定ファイルを同じディレクトリで使用する場合、それぞれ独立した状態ファイルが作成されます
+- `registryPassword` を指定する場合は `registryPasswordVersion` も必須です
 
 ## 運用例
 

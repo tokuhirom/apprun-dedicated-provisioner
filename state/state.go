@@ -1,8 +1,6 @@
 package state
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -15,7 +13,7 @@ const (
 
 // ApplicationState holds the state for a single application
 type ApplicationState struct {
-	RegistryPasswordHash string `json:"registryPasswordHash,omitempty"`
+	RegistryPasswordVersion *int `json:"registryPasswordVersion,omitempty"`
 }
 
 // State represents the state file structure
@@ -80,35 +78,22 @@ func (s *State) Save(configPath string) error {
 	return os.WriteFile(statePath, data, 0644)
 }
 
-// HashPassword generates a SHA256 hash of the password with prefix
-func HashPassword(password string) string {
-	hash := sha256.Sum256([]byte(password))
-	return "sha256:" + hex.EncodeToString(hash[:])
-}
-
-// GetPasswordHash returns the stored password hash for an application
-func (s *State) GetPasswordHash(appName string) string {
+// GetPasswordVersion returns the stored password version for an application
+func (s *State) GetPasswordVersion(appName string) *int {
 	if app, ok := s.Applications[appName]; ok {
-		return app.RegistryPasswordHash
+		return app.RegistryPasswordVersion
 	}
-	return ""
+	return nil
 }
 
-// SetPasswordHash sets the password hash for an application
-func (s *State) SetPasswordHash(appName, hash string) {
+// SetPasswordVersion sets the password version for an application
+func (s *State) SetPasswordVersion(appName string, version *int) {
 	if _, ok := s.Applications[appName]; !ok {
 		s.Applications[appName] = &ApplicationState{}
 	}
-	s.Applications[appName].RegistryPasswordHash = hash
-}
-
-// RemovePasswordHash removes the password hash for an application
-func (s *State) RemovePasswordHash(appName string) {
-	if app, ok := s.Applications[appName]; ok {
-		app.RegistryPasswordHash = ""
-		// Clean up empty application state
-		if app.RegistryPasswordHash == "" {
-			delete(s.Applications, appName)
-		}
+	s.Applications[appName].RegistryPasswordVersion = version
+	// Clean up empty application state
+	if version == nil {
+		delete(s.Applications, appName)
 	}
 }

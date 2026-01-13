@@ -39,8 +39,9 @@ type ApplicationSpec struct {
 	// Cmd is the command to run (optional)
 	Cmd []string `yaml:"cmd,omitempty"`
 	// Registry credentials
-	RegistryUsername *string `yaml:"registryUsername,omitempty"`
-	RegistryPassword *string `yaml:"registryPassword,omitempty"`
+	RegistryUsername        *string `yaml:"registryUsername,omitempty"`
+	RegistryPassword        *string `yaml:"registryPassword,omitempty"`
+	RegistryPasswordVersion *int    `yaml:"registryPasswordVersion,omitempty"`
 	// ExposedPorts defines ports exposed by the application
 	ExposedPorts []ExposedPortConfig `yaml:"exposedPorts"`
 	// Env is a list of environment variables

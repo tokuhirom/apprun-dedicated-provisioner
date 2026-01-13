@@ -149,9 +149,9 @@ func (p *Provisioner) Apply(ctx context.Context, cfg *config.ClusterConfig, plan
 			if err := p.createApplication(ctx, clusterID, appCfg, opts); err != nil {
 				return fmt.Errorf("failed to create application %s: %w", action.ApplicationName, err)
 			}
-			// Update state with password hash
-			if appCfg.Spec.RegistryPassword != nil {
-				p.state.SetPasswordHash(appCfg.Name, state.HashPassword(*appCfg.Spec.RegistryPassword))
+			// Update state with password version
+			if appCfg.Spec.RegistryPasswordVersion != nil {
+				p.state.SetPasswordVersion(appCfg.Name, appCfg.Spec.RegistryPasswordVersion)
 				stateModified = true
 			}
 		case ActionUpdate:
@@ -159,16 +159,18 @@ func (p *Provisioner) Apply(ctx context.Context, cfg *config.ClusterConfig, plan
 			if err := p.updateApplication(ctx, existingApp, appCfg, opts); err != nil {
 				return fmt.Errorf("failed to update application %s: %w", action.ApplicationName, err)
 			}
-			// Update state with password hash
-			if appCfg.Spec.RegistryPassword != nil {
-				p.state.SetPasswordHash(appCfg.Name, state.HashPassword(*appCfg.Spec.RegistryPassword))
-				stateModified = true
-			} else {
-				// Remove hash if password was removed
-				if p.state.GetPasswordHash(appCfg.Name) != "" {
-					p.state.RemovePasswordHash(appCfg.Name)
+			// Update state with password version
+			storedVersion := p.state.GetPasswordVersion(appCfg.Name)
+			desiredVersion := appCfg.Spec.RegistryPasswordVersion
+			if desiredVersion != nil {
+				if storedVersion == nil || *storedVersion != *desiredVersion {
+					p.state.SetPasswordVersion(appCfg.Name, desiredVersion)
 					stateModified = true
 				}
+			} else if storedVersion != nil {
+				// Remove version if password was removed
+				p.state.SetPasswordVersion(appCfg.Name, nil)
+				stateModified = true
 			}
 		case ActionNoop:
 			log.Printf("Application %q is up to date", action.ApplicationName)
@@ -281,19 +283,20 @@ func (p *Provisioner) compareVersion(appName string, current *api.ReadApplicatio
 		changes = append(changes, fmt.Sprintf("RegistryUsername: %s -> %s", current.RegistryUsername.Value, *desired.RegistryUsername))
 	}
 
-	// Compare registry password using state file hash
-	storedHash := p.state.GetPasswordHash(appName)
-	if desired.RegistryPassword != nil {
-		desiredHash := state.HashPassword(*desired.RegistryPassword)
-		if storedHash == "" {
-			changes = append(changes, "RegistryPassword: (new)")
-		} else if storedHash != desiredHash {
-			changes = append(changes, "RegistryPassword: (changed)")
+	// Compare registry password version using state file
+	storedVersion := p.state.GetPasswordVersion(appName)
+	desiredVersion := desired.RegistryPasswordVersion
+
+	if desiredVersion != nil {
+		if storedVersion == nil {
+			changes = append(changes, fmt.Sprintf("RegistryPasswordVersion: (new) -> %d", *desiredVersion))
+		} else if *storedVersion != *desiredVersion {
+			changes = append(changes, fmt.Sprintf("RegistryPasswordVersion: %d -> %d", *storedVersion, *desiredVersion))
 		}
-		// If hashes match, no change needed
-	} else if storedHash != "" {
+		// If versions match, no change needed
+	} else if storedVersion != nil {
 		// Password was removed from YAML
-		changes = append(changes, "RegistryPassword: (removed)")
+		changes = append(changes, fmt.Sprintf("RegistryPasswordVersion: %d -> (removed)", *storedVersion))
 	}
 
 	return changes
