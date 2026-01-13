@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.11](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.10...v0.0.11) - 2026-01-13
+- feat: add homebrew-tap support by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/23
+
 ## [v0.0.10](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.9...v0.0.10) - 2026-01-13
 - fix: correct "App Run" to "AppRun" naming by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/21
 
