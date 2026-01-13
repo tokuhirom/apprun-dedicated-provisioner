@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.13](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.12...v0.0.13) - 2026-01-13
+- fix: add Cmd comparison in change detection by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/29
+
 ## [v0.0.12](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.11...v0.0.12) - 2026-01-13
 - fix: show before/after values in change messages by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/25
 - feat: support SAKURACLOUD_ACCESS_TOKEN env vars for compatibility by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/27
