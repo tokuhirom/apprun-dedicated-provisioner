@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.19](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.18...v0.0.19) - 2026-01-13
+- fix: add detailed ExposedPorts comparison by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/41
+
 ## [v0.0.18](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.17...v0.0.18) - 2026-01-13
 - feat: add -a short option for --app flag by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/39
 
