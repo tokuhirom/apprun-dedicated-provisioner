@@ -66,6 +66,8 @@ export SAKURA_ACCESS_TOKEN="your-access-token-uuid"
 export SAKURA_ACCESS_TOKEN_SECRET="your-access-token-secret"
 ```
 
+互換性のため、`SAKURACLOUD_ACCESS_TOKEN` / `SAKURACLOUD_ACCESS_TOKEN_SECRET` も使用可能です。
+
 ### 変更内容の確認 (plan)
 
 ```bash
