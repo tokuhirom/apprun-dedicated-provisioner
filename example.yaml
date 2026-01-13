@@ -27,6 +27,7 @@ applications:
           secret: false
         - key: "DATABASE_URL"
           secret: true
+          secretVersion: 1
 
   - name: "api"
     spec:

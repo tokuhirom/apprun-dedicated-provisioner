@@ -82,5 +82,12 @@ func validateApplication(app *ApplicationConfig, index int) error {
 		return fmt.Errorf("applications[%d]: registryPasswordVersion is required when registryPassword is specified", index)
 	}
 
+	// Validate environment variables
+	for j, env := range v.Env {
+		if env.Secret && env.SecretVersion == nil {
+			return fmt.Errorf("applications[%d].env[%d]: secretVersion is required when secret is true (key: %s)", index, j, env.Key)
+		}
+	}
+
 	return nil
 }

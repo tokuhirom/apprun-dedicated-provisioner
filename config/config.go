@@ -80,4 +80,6 @@ type EnvVarConfig struct {
 	Value *string `yaml:"value,omitempty"`
 	// Secret marks the variable as secret (value cannot be retrieved via API)
 	Secret bool `yaml:"secret"`
+	// SecretVersion is required when secret is true (increment to trigger update)
+	SecretVersion *int `yaml:"secretVersion,omitempty"`
 }

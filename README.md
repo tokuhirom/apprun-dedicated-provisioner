@@ -199,6 +199,9 @@ applications:
 | `key` | Yes | 環境変数名 |
 | `value` | No | 値（secret 時は省略可） |
 | `secret` | Yes | 秘密情報フラグ |
+| `secretVersion` | No* | シークレットのバージョン番号 |
+
+\* `secret: true` の場合は必須。値を変更する際にインクリメントすることで変更を検出
 
 ## 設定の継承ルール
 
@@ -220,7 +223,7 @@ applications:
 - **ファイル名**: `<config名>.apprun-state.json`
   - 例: `apprun.yaml` の場合 → `apprun.apprun-state.json`
 - **保存場所**: 設定ファイル（YAML）と同じディレクトリ
-- **内容**: アプリケーションごとの `registryPasswordVersion`
+- **内容**: アプリケーションごとの `registryPasswordVersion` と `secretEnvVersions`
 
 ### ファイル構造
 
@@ -229,7 +232,11 @@ applications:
   "version": 1,
   "applications": {
     "webapp": {
-      "registryPasswordVersion": 1
+      "registryPasswordVersion": 1,
+      "secretEnvVersions": {
+        "DATABASE_URL": 1,
+        "API_KEY": 2
+      }
     }
   }
 }
@@ -237,13 +244,15 @@ applications:
 
 ### 動作
 
-1. **plan 時**: 状態ファイルのバージョンと YAML の `registryPasswordVersion` を比較し、変更を検出
-2. **apply 時**: パスワードの変更を適用後、状態ファイルを更新
+1. **plan 時**: 状態ファイルのバージョンと YAML のバージョンを比較し、変更を検出
+2. **apply 時**: 変更を適用後、状態ファイルを更新
 
-### パスワード変更検出ロジック
+### バージョン変更検出ロジック
 
-| YAML の registryPasswordVersion | 状態ファイルのバージョン | 判定 |
-|---------------------------------|--------------------------|------|
+`registryPasswordVersion` と `secretVersion`（env の secret=true 用）は同じロジックで変更を検出します：
+
+| YAML のバージョン | 状態ファイルのバージョン | 判定 |
+|-------------------|--------------------------|------|
 | あり | なし | 変更あり（新規追加） |
 | あり（一致） | あり | 変更なし |
 | あり（不一致） | あり | 変更あり（更新） |
@@ -252,7 +261,7 @@ applications:
 
 ### 使用例
 
-パスワードを変更する場合は、`registryPasswordVersion` をインクリメントします：
+パスワードや secret 環境変数を変更する場合は、バージョンをインクリメントします：
 
 ```yaml
 applications:
@@ -261,6 +270,10 @@ applications:
       registryUsername: "myuser"
       registryPassword: "new-secret-password"
       registryPasswordVersion: 2  # 1 から 2 に変更
+      env:
+        - key: "DATABASE_URL"
+          secret: true
+          secretVersion: 2  # 1 から 2 に変更
 ```
 
 ### 注意事項
@@ -268,6 +281,7 @@ applications:
 - 状態ファイルにはバージョン番号のみが保存されるため、Git で管理しても安全です
 - 複数の設定ファイルを同じディレクトリで使用する場合、それぞれ独立した状態ファイルが作成されます
 - `registryPassword` を指定する場合は `registryPasswordVersion` も必須です
+- `secret: true` の環境変数には `secretVersion` が必須です
 
 ## 運用例
 

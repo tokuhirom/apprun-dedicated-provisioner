@@ -201,6 +201,11 @@
         "secret": {
           "type": "boolean",
           "description": "Mark as secret (value cannot be retrieved via API)"
+        },
+        "secretVersion": {
+          "type": "integer",
+          "description": "Version number for secret value (required when secret is true, increment to trigger update)",
+          "minimum": 1
         }
       }
     }

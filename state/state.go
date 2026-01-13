@@ -13,7 +13,8 @@ const (
 
 // ApplicationState holds the state for a single application
 type ApplicationState struct {
-	RegistryPasswordVersion *int `json:"registryPasswordVersion,omitempty"`
+	RegistryPasswordVersion *int           `json:"registryPasswordVersion,omitempty"`
+	SecretEnvVersions       map[string]int `json:"secretEnvVersions,omitempty"`
 }
 
 // State represents the state file structure
@@ -88,12 +89,49 @@ func (s *State) GetPasswordVersion(appName string) *int {
 
 // SetPasswordVersion sets the password version for an application
 func (s *State) SetPasswordVersion(appName string, version *int) {
+	s.ensureApp(appName)
+	s.Applications[appName].RegistryPasswordVersion = version
+	s.cleanupApp(appName)
+}
+
+// GetSecretEnvVersion returns the stored version for a secret environment variable
+func (s *State) GetSecretEnvVersion(appName, envKey string) *int {
+	if app, ok := s.Applications[appName]; ok && app.SecretEnvVersions != nil {
+		if v, ok := app.SecretEnvVersions[envKey]; ok {
+			return &v
+		}
+	}
+	return nil
+}
+
+// SetSecretEnvVersion sets the version for a secret environment variable
+func (s *State) SetSecretEnvVersion(appName, envKey string, version *int) {
+	s.ensureApp(appName)
+	if version != nil {
+		if s.Applications[appName].SecretEnvVersions == nil {
+			s.Applications[appName].SecretEnvVersions = make(map[string]int)
+		}
+		s.Applications[appName].SecretEnvVersions[envKey] = *version
+	} else {
+		if s.Applications[appName].SecretEnvVersions != nil {
+			delete(s.Applications[appName].SecretEnvVersions, envKey)
+		}
+	}
+	s.cleanupApp(appName)
+}
+
+// ensureApp ensures the application state exists
+func (s *State) ensureApp(appName string) {
 	if _, ok := s.Applications[appName]; !ok {
 		s.Applications[appName] = &ApplicationState{}
 	}
-	s.Applications[appName].RegistryPasswordVersion = version
-	// Clean up empty application state
-	if version == nil {
-		delete(s.Applications, appName)
+}
+
+// cleanupApp removes empty application state
+func (s *State) cleanupApp(appName string) {
+	if app, ok := s.Applications[appName]; ok {
+		if app.RegistryPasswordVersion == nil && len(app.SecretEnvVersions) == 0 {
+			delete(s.Applications, appName)
+		}
 	}
 }
