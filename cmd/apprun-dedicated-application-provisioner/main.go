@@ -9,6 +9,7 @@ import (
 
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/config"
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/provisioner"
+	"github.com/tokuhirom/apprun-dedicated-application-provisioner/state"
 )
 
 // Version information (set by goreleaser)
@@ -62,7 +63,7 @@ func (c *PlanCmd) Run(cli *CLI) error {
 		return err
 	}
 
-	p, err := createClient()
+	p, err := createProvisioner(cli.Config)
 	if err != nil {
 		return err
 	}
@@ -86,7 +87,7 @@ func (c *ApplyCmd) Run(cli *CLI) error {
 		return err
 	}
 
-	p, err := createClient()
+	p, err := createProvisioner(cli.Config)
 	if err != nil {
 		return err
 	}
@@ -126,7 +127,7 @@ func (c *ApplyCmd) Run(cli *CLI) error {
 	return nil
 }
 
-func createClient() (*provisioner.Provisioner, error) {
+func createProvisioner(configPath string) (*provisioner.Provisioner, error) {
 	accessToken := getEnvWithFallback("SAKURA_ACCESS_TOKEN", "SAKURACLOUD_ACCESS_TOKEN")
 	accessTokenSecret := getEnvWithFallback("SAKURA_ACCESS_TOKEN_SECRET", "SAKURACLOUD_ACCESS_TOKEN_SECRET")
 
@@ -142,7 +143,13 @@ func createClient() (*provisioner.Provisioner, error) {
 		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
 
-	return provisioner.NewProvisioner(client), nil
+	// Load state file
+	st, err := state.LoadState(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load state file: %w", err)
+	}
+
+	return provisioner.NewProvisioner(client, st, configPath), nil
 }
 
 func loadConfig(path string) (*config.ClusterConfig, error) {

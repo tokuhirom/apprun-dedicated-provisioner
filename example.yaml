@@ -37,6 +37,7 @@ applications:
       image: "myregistry/api:v1.0.0"
       registryUsername: "username"
       registryPassword: "password"
+      registryPasswordVersion: 1
       exposedPorts:
         - targetPort: 8080
           loadBalancerPort: 443

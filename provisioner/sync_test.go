@@ -10,6 +10,7 @@ import (
 
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/api"
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/config"
+	"github.com/tokuhirom/apprun-dedicated-application-provisioner/state"
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/testutil"
 )
 
@@ -90,7 +91,7 @@ func TestCreatePlan_ClusterNotFound(t *testing.T) {
 	defer cleanup()
 	_ = mockServer // unused but needed for setup
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "non-existent-cluster",
 		Applications: []config.ApplicationConfig{
@@ -111,7 +112,7 @@ func TestCreatePlan_ClusterFound(t *testing.T) {
 
 	clusterID := createTestCluster(mockServer, "my-cluster")
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName:  "my-cluster",
 		Applications: []config.ApplicationConfig{},
@@ -134,7 +135,7 @@ func TestCreatePlan_NewApplication(t *testing.T) {
 
 	createTestCluster(mockServer, "my-cluster")
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -172,7 +173,7 @@ func TestCreatePlan_ExistingApplication_NoVersion(t *testing.T) {
 	// Create application without version
 	createTestApplication(mockServer, clusterID, "existing-app")
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -205,7 +206,7 @@ func TestCreatePlan_ExistingApplication_NoChanges(t *testing.T) {
 	appID := createTestApplication(mockServer, clusterID, "existing-app")
 	createTestVersion(mockServer, appID, 1, 500, 1024)
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -241,7 +242,7 @@ func TestCreatePlan_ExistingApplication_CPUChanged(t *testing.T) {
 	appID := createTestApplication(mockServer, clusterID, "existing-app")
 	createTestVersion(mockServer, appID, 1, 500, 1024)
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -276,7 +277,7 @@ func TestCreatePlan_ExistingApplication_MemoryChanged(t *testing.T) {
 	appID := createTestApplication(mockServer, clusterID, "existing-app")
 	createTestVersion(mockServer, appID, 1, 500, 1024)
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -311,7 +312,7 @@ func TestCreatePlan_ExistingApplication_ScalingModeChanged(t *testing.T) {
 	appID := createTestApplication(mockServer, clusterID, "existing-app")
 	createTestVersion(mockServer, appID, 1, 500, 1024)
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -347,7 +348,7 @@ func TestCreatePlan_ExistingApplication_FixedScaleChanged(t *testing.T) {
 	appID := createTestApplication(mockServer, clusterID, "existing-app")
 	createTestVersion(mockServer, appID, 1, 500, 1024)
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -382,7 +383,7 @@ func TestCreatePlan_ExistingApplication_ExposedPortsCountChanged(t *testing.T) {
 	appID := createTestApplication(mockServer, clusterID, "existing-app")
 	createTestVersion(mockServer, appID, 1, 500, 1024)
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -418,7 +419,7 @@ func TestCreatePlan_ExistingApplication_EnvCountChanged(t *testing.T) {
 	appID := createTestApplication(mockServer, clusterID, "existing-app")
 	createTestVersion(mockServer, appID, 1, 500, 1024)
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -456,7 +457,7 @@ func TestCreatePlan_ExistingApplication_MultipleChanges(t *testing.T) {
 	appID := createTestApplication(mockServer, clusterID, "existing-app")
 	createTestVersion(mockServer, appID, 1, 500, 1024)
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -493,7 +494,7 @@ func TestCreatePlan_MultipleApplications(t *testing.T) {
 	appID := createTestApplication(mockServer, clusterID, "existing-app")
 	createTestVersion(mockServer, appID, 1, 500, 1024)
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -548,7 +549,7 @@ func TestApply_CreateApplication(t *testing.T) {
 
 	clusterID := createTestCluster(mockServer, "my-cluster")
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -596,7 +597,7 @@ func TestApply_UpdateApplication(t *testing.T) {
 	appID := createTestApplication(mockServer, clusterID, "existing-app")
 	createTestVersion(mockServer, appID, 1, 500, 1024)
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -649,7 +650,7 @@ func TestApply_NoopApplication(t *testing.T) {
 	appID := createTestApplication(mockServer, clusterID, "existing-app")
 	createTestVersion(mockServer, appID, 1, 500, 1024)
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -692,7 +693,7 @@ func TestApply_MultipleApplications_MixedActions(t *testing.T) {
 	updateAppID := createTestApplication(mockServer, clusterID, "update-app")
 	createTestVersion(mockServer, updateAppID, 1, 500, 1024)
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -784,7 +785,7 @@ func TestApply_ImageInheritedFromExistingVersion(t *testing.T) {
 		},
 	})
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -823,7 +824,7 @@ func TestApply_NewApplication_UsesConfigImage(t *testing.T) {
 
 	clusterID := createTestCluster(mockServer, "my-cluster")
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -869,7 +870,7 @@ func TestApply_CreateApplication_WithoutActivation(t *testing.T) {
 
 	clusterID := createTestCluster(mockServer, "my-cluster")
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{
@@ -915,7 +916,7 @@ func TestApply_UpdateApplication_WithoutActivation(t *testing.T) {
 	appID := createTestApplication(mockServer, clusterID, "existing-app")
 	createTestVersion(mockServer, appID, 1, 500, 1024)
 
-	provisioner := NewProvisioner(client)
+	provisioner := NewProvisioner(client, state.NewState(), "")
 	cfg := &config.ClusterConfig{
 		ClusterName: "my-cluster",
 		Applications: []config.ApplicationConfig{

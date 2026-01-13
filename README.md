@@ -175,10 +175,12 @@ applications:
 | `cmd` | No | 起動コマンド | Yes |
 | `registryUsername` | No | レジストリユーザー名 | Yes |
 | `registryPassword` | No | レジストリパスワード | Yes |
+| `registryPasswordVersion` | No* | パスワードのバージョン番号 | No |
 | `exposedPorts` | No | 公開ポート設定 | Yes |
 | `env` | No | 環境変数 | Yes |
 
-\* 新規アプリケーション作成時は必須
+\* `image`: 新規アプリケーション作成時は必須
+\* `registryPasswordVersion`: `registryPassword` 指定時は必須。パスワード変更時にバージョンを上げることで変更を検出
 
 #### 公開ポート設定 (exposedPorts)
 
@@ -206,6 +208,66 @@ applications:
 - **その他の項目**: YAML で指定されていれば使用、省略されていれば既存を継承
 
 これにより、CI/CD でのイメージデプロイと、このツールでの設定管理を分離できます。
+
+## 状態ファイル
+
+### 概要
+
+このツールは、コンテナレジストリのパスワードなど、サーバーから取得できない情報の変更検出のために状態ファイルを使用します。
+
+### ファイル仕様
+
+- **ファイル名**: `<config名>.apprun-state.json`
+  - 例: `apprun.yaml` の場合 → `apprun.apprun-state.json`
+- **保存場所**: 設定ファイル（YAML）と同じディレクトリ
+- **内容**: アプリケーションごとの `registryPasswordVersion`
+
+### ファイル構造
+
+```json
+{
+  "version": 1,
+  "applications": {
+    "webapp": {
+      "registryPasswordVersion": 1
+    }
+  }
+}
+```
+
+### 動作
+
+1. **plan 時**: 状態ファイルのバージョンと YAML の `registryPasswordVersion` を比較し、変更を検出
+2. **apply 時**: パスワードの変更を適用後、状態ファイルを更新
+
+### パスワード変更検出ロジック
+
+| YAML の registryPasswordVersion | 状態ファイルのバージョン | 判定 |
+|---------------------------------|--------------------------|------|
+| あり | なし | 変更あり（新規追加） |
+| あり（一致） | あり | 変更なし |
+| あり（不一致） | あり | 変更あり（更新） |
+| なし | あり | 変更あり（削除） |
+| なし | なし | 変更なし |
+
+### 使用例
+
+パスワードを変更する場合は、`registryPasswordVersion` をインクリメントします：
+
+```yaml
+applications:
+  - name: "webapp"
+    spec:
+      registryUsername: "myuser"
+      registryPassword: "new-secret-password"
+      registryPasswordVersion: 2  # 1 から 2 に変更
+```
+
+### 注意事項
+
+- 状態ファイルにはバージョン番号のみが保存されるため、Git で管理しても安全です
+- 複数の設定ファイルを同じディレクトリで使用する場合、それぞれ独立した状態ファイルが作成されます
+- `registryPassword` を指定する場合は `registryPasswordVersion` も必須です
 
 ## 運用例
 
