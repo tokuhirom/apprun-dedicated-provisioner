@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.0.12](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.11...v0.0.12) - 2026-01-13
+- fix: show before/after values in change messages by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/25
+- feat: support SAKURACLOUD_ACCESS_TOKEN env vars for compatibility by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/27
+- fix: show API error response body in error messages by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/28
+
 ## [v0.0.11](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.10...v0.0.11) - 2026-01-13
 - feat: add homebrew-tap support by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/23
 
