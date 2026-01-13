@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.16](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.15...v0.0.16) - 2026-01-13
+- feat: add versions, diff, and activate commands by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/35
+
 ## [v0.0.15](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.14...v0.0.15) - 2026-01-13
 - feat: improve env comparison and add secretVersion by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/33
 
