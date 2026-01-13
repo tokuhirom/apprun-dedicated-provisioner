@@ -233,7 +233,25 @@ func (p *Provisioner) compareVersion(current *api.ReadApplicationVersionDetail, 
 		changes = append(changes, fmt.Sprintf("Env count: %d -> %d", len(current.Env), len(desired.Env)))
 	}
 
+	// Compare Cmd
+	if !stringSlicesEqual(current.Cmd, desired.Cmd) {
+		changes = append(changes, fmt.Sprintf("Cmd: %v -> %v", current.Cmd, desired.Cmd))
+	}
+
 	return changes
+}
+
+// stringSlicesEqual compares two string slices for equality
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // resolveClusterID resolves a cluster name to its ID
