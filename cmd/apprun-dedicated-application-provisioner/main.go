@@ -23,8 +23,11 @@ type CLI struct {
 	Config  string      `short:"c" help:"Path to config file"`
 	Version VersionFlag `name:"version" help:"Print version information"`
 
-	Plan  PlanCmd  `cmd:"" help:"Show execution plan without making changes"`
-	Apply ApplyCmd `cmd:"" help:"Apply the configuration changes"`
+	Plan     PlanCmd     `cmd:"" help:"Show execution plan without making changes"`
+	Apply    ApplyCmd    `cmd:"" help:"Apply the configuration changes"`
+	Versions VersionsCmd `cmd:"" help:"List application versions"`
+	Diff     DiffCmd     `cmd:"" help:"Show diff between two versions"`
+	Activate ActivateCmd `cmd:"" help:"Activate a version"`
 }
 
 type VersionFlag bool
@@ -41,6 +44,21 @@ type PlanCmd struct{}
 
 type ApplyCmd struct {
 	Activate bool `help:"Activate the created/updated version after apply"`
+}
+
+type VersionsCmd struct {
+	App string `help:"Application name" required:""`
+}
+
+type DiffCmd struct {
+	App  string `help:"Application name" required:""`
+	From int    `help:"Source version (default: active version)" default:"0"`
+	To   int    `help:"Target version (default: latest version)" default:"0"`
+}
+
+type ActivateCmd struct {
+	App           string `help:"Application name" required:""`
+	TargetVersion int    `name:"target" short:"t" help:"Version to activate (default: latest)" default:"0"`
 }
 
 func main() {
@@ -127,6 +145,78 @@ func (c *ApplyCmd) Run(cli *CLI) error {
 	return nil
 }
 
+func (c *VersionsCmd) Run(cli *CLI) error {
+	if cli.Config == "" {
+		return fmt.Errorf("--config (-c) is required")
+	}
+	cfg, err := loadConfig(cli.Config)
+	if err != nil {
+		return err
+	}
+
+	p, err := createProvisionerSimple()
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	result, err := p.ListVersions(ctx, cfg.ClusterName, c.App)
+	if err != nil {
+		return fmt.Errorf("failed to list versions: %w", err)
+	}
+
+	printVersionList(result)
+	return nil
+}
+
+func (c *DiffCmd) Run(cli *CLI) error {
+	if cli.Config == "" {
+		return fmt.Errorf("--config (-c) is required")
+	}
+	cfg, err := loadConfig(cli.Config)
+	if err != nil {
+		return err
+	}
+
+	p, err := createProvisionerSimple()
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	diff, err := p.GetVersionDiff(ctx, cfg.ClusterName, c.App, c.From, c.To)
+	if err != nil {
+		return fmt.Errorf("failed to get version diff: %w", err)
+	}
+
+	printVersionDiff(c.App, diff)
+	return nil
+}
+
+func (c *ActivateCmd) Run(cli *CLI) error {
+	if cli.Config == "" {
+		return fmt.Errorf("--config (-c) is required")
+	}
+	cfg, err := loadConfig(cli.Config)
+	if err != nil {
+		return err
+	}
+
+	p, err := createProvisionerSimple()
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	activatedVersion, err := p.ActivateVersion(ctx, cfg.ClusterName, c.App, c.TargetVersion)
+	if err != nil {
+		return fmt.Errorf("failed to activate version: %w", err)
+	}
+
+	fmt.Printf("Successfully activated version %d for application %q\n", activatedVersion, c.App)
+	return nil
+}
+
 func createProvisioner(configPath string) (*provisioner.Provisioner, error) {
 	accessToken := getEnvWithFallback("SAKURA_ACCESS_TOKEN", "SAKURACLOUD_ACCESS_TOKEN")
 	accessTokenSecret := getEnvWithFallback("SAKURA_ACCESS_TOKEN_SECRET", "SAKURACLOUD_ACCESS_TOKEN_SECRET")
@@ -198,4 +288,92 @@ func getEnvWithFallback(keys ...string) string {
 		}
 	}
 	return ""
+}
+
+// createProvisionerSimple creates a provisioner without state file (for read-only operations)
+func createProvisionerSimple() (*provisioner.Provisioner, error) {
+	accessToken := getEnvWithFallback("SAKURA_ACCESS_TOKEN", "SAKURACLOUD_ACCESS_TOKEN")
+	accessTokenSecret := getEnvWithFallback("SAKURA_ACCESS_TOKEN_SECRET", "SAKURACLOUD_ACCESS_TOKEN_SECRET")
+
+	if accessToken == "" || accessTokenSecret == "" {
+		return nil, fmt.Errorf("SAKURA_ACCESS_TOKEN (or SAKURACLOUD_ACCESS_TOKEN) and SAKURA_ACCESS_TOKEN_SECRET (or SAKURACLOUD_ACCESS_TOKEN_SECRET) environment variables are required")
+	}
+
+	client, err := provisioner.NewClient(provisioner.ClientConfig{
+		AccessToken:       accessToken,
+		AccessTokenSecret: accessTokenSecret,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create client: %w", err)
+	}
+
+	// Use empty state for read-only operations
+	st := state.NewState()
+
+	return provisioner.NewProvisioner(client, st, ""), nil
+}
+
+func printVersionList(list *provisioner.VersionList) {
+	fmt.Printf("Application: %s (%s)\n\n", list.ApplicationName, list.ApplicationID)
+
+	if len(list.Versions) == 0 {
+		fmt.Println("No versions found.")
+		return
+	}
+
+	// Print header
+	fmt.Printf("%-8s %-30s %-20s %-6s %s\n", "VERSION", "IMAGE", "CREATED", "NODES", "STATUS")
+
+	// Sort versions by number (descending)
+	// Note: API may return them in any order
+	for i := len(list.Versions) - 1; i >= 0; i-- {
+		v := list.Versions[i]
+		status := ""
+		if v.IsActive {
+			status = "active"
+		}
+		fmt.Printf("%-8d %-30s %-20s %-6d %s\n",
+			v.Version,
+			truncateString(v.Image, 30),
+			v.Created.Format("2006-01-02 15:04:05"),
+			v.ActiveNodes,
+			status,
+		)
+	}
+
+	fmt.Printf("\nTotal: %d versions\n", len(list.Versions))
+	if list.ActiveVersion > 0 {
+		fmt.Printf("Active version: %d\n", list.ActiveVersion)
+	} else {
+		fmt.Println("Active version: (none)")
+	}
+	if list.LatestVersion > 0 {
+		fmt.Printf("Latest version: %d\n", list.LatestVersion)
+	}
+}
+
+func printVersionDiff(appName string, diff *provisioner.VersionDiff) {
+	fmt.Printf("Application: %s\n", appName)
+	fmt.Printf("Comparing version %d → %d\n\n", diff.FromVersion, diff.ToVersion)
+
+	if len(diff.Changes) == 0 {
+		fmt.Println("No differences found.")
+	} else {
+		for _, change := range diff.Changes {
+			fmt.Printf("  %s\n", change)
+		}
+	}
+
+	// Print warning about incomparable fields
+	if diff.HasSecretEnv || diff.HasRegistryPwd {
+		fmt.Println()
+		fmt.Println("Note: secret env values and registryPassword cannot be compared (values not returned by API)")
+	}
+}
+
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen-3] + "..."
 }
