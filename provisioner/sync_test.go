@@ -408,7 +408,8 @@ func TestCreatePlan_ExistingApplication_ExposedPortsCountChanged(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, plan.Actions, 1)
 	assert.Equal(t, ActionUpdate, plan.Actions[0].Action)
-	assert.Contains(t, plan.Actions[0].Changes, "ExposedPorts count: 1 -> 2")
+	// New port addition is detected as individual field changes
+	assert.Contains(t, plan.Actions[0].Changes, "ExposedPorts.8080.TargetPort: (unset) -> 8080")
 }
 
 func TestCreatePlan_ExistingApplication_EnvCountChanged(t *testing.T) {
