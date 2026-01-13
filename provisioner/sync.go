@@ -290,6 +290,20 @@ func (p *Provisioner) compareVersion(appName string, current *api.ReadApplicatio
 				changes = append(changes, fmt.Sprintf("MaxScale: %d -> %d", v, *desired.MaxScale))
 			}
 		}
+		if desired.ScaleInThreshold != nil {
+			if v, ok := current.ScaleInThreshold.Get(); !ok {
+				changes = append(changes, fmt.Sprintf("ScaleInThreshold: (unset) -> %d", *desired.ScaleInThreshold))
+			} else if v != *desired.ScaleInThreshold {
+				changes = append(changes, fmt.Sprintf("ScaleInThreshold: %d -> %d", v, *desired.ScaleInThreshold))
+			}
+		}
+		if desired.ScaleOutThreshold != nil {
+			if v, ok := current.ScaleOutThreshold.Get(); !ok {
+				changes = append(changes, fmt.Sprintf("ScaleOutThreshold: (unset) -> %d", *desired.ScaleOutThreshold))
+			} else if v != *desired.ScaleOutThreshold {
+				changes = append(changes, fmt.Sprintf("ScaleOutThreshold: %d -> %d", v, *desired.ScaleOutThreshold))
+			}
+		}
 	}
 
 	// Compare exposed ports
@@ -1069,6 +1083,30 @@ func (p *Provisioner) GetVersionDiff(ctx context.Context, clusterName, appName s
 		}
 	} else if toVal, toOk := to.MaxScale.Get(); toOk {
 		diff.Changes = append(diff.Changes, fmt.Sprintf("MaxScale: (unset) -> %d", toVal))
+	}
+
+	if fromVal, fromOk := from.ScaleInThreshold.Get(); fromOk {
+		if toVal, toOk := to.ScaleInThreshold.Get(); toOk {
+			if fromVal != toVal {
+				diff.Changes = append(diff.Changes, fmt.Sprintf("ScaleInThreshold: %d -> %d", fromVal, toVal))
+			}
+		} else {
+			diff.Changes = append(diff.Changes, fmt.Sprintf("ScaleInThreshold: %d -> (unset)", fromVal))
+		}
+	} else if toVal, toOk := to.ScaleInThreshold.Get(); toOk {
+		diff.Changes = append(diff.Changes, fmt.Sprintf("ScaleInThreshold: (unset) -> %d", toVal))
+	}
+
+	if fromVal, fromOk := from.ScaleOutThreshold.Get(); fromOk {
+		if toVal, toOk := to.ScaleOutThreshold.Get(); toOk {
+			if fromVal != toVal {
+				diff.Changes = append(diff.Changes, fmt.Sprintf("ScaleOutThreshold: %d -> %d", fromVal, toVal))
+			}
+		} else {
+			diff.Changes = append(diff.Changes, fmt.Sprintf("ScaleOutThreshold: %d -> (unset)", fromVal))
+		}
+	} else if toVal, toOk := to.ScaleOutThreshold.Get(); toOk {
+		diff.Changes = append(diff.Changes, fmt.Sprintf("ScaleOutThreshold: (unset) -> %d", toVal))
 	}
 
 	// Compare Cmd
