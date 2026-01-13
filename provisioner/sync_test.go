@@ -371,7 +371,7 @@ func TestCreatePlan_ExistingApplication_FixedScaleChanged(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, plan.Actions, 1)
 	assert.Equal(t, ActionUpdate, plan.Actions[0].Action)
-	assert.Contains(t, plan.Actions[0].Changes, "FixedScale changed")
+	assert.Contains(t, plan.Actions[0].Changes, "FixedScale: 2 -> 5")
 }
 
 func TestCreatePlan_ExistingApplication_ExposedPortsCountChanged(t *testing.T) {

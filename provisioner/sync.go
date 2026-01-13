@@ -198,19 +198,25 @@ func (p *Provisioner) compareVersion(current *api.ReadApplicationVersionDetail, 
 
 	// Compare scaling parameters
 	if desired.ScalingMode == "manual" && desired.FixedScale != nil {
-		if v, ok := current.FixedScale.Get(); !ok || v != *desired.FixedScale {
-			changes = append(changes, "FixedScale changed")
+		if v, ok := current.FixedScale.Get(); !ok {
+			changes = append(changes, fmt.Sprintf("FixedScale: (unset) -> %d", *desired.FixedScale))
+		} else if v != *desired.FixedScale {
+			changes = append(changes, fmt.Sprintf("FixedScale: %d -> %d", v, *desired.FixedScale))
 		}
 	}
 	if desired.ScalingMode == "cpu" {
 		if desired.MinScale != nil {
-			if v, ok := current.MinScale.Get(); !ok || v != *desired.MinScale {
-				changes = append(changes, "MinScale changed")
+			if v, ok := current.MinScale.Get(); !ok {
+				changes = append(changes, fmt.Sprintf("MinScale: (unset) -> %d", *desired.MinScale))
+			} else if v != *desired.MinScale {
+				changes = append(changes, fmt.Sprintf("MinScale: %d -> %d", v, *desired.MinScale))
 			}
 		}
 		if desired.MaxScale != nil {
-			if v, ok := current.MaxScale.Get(); !ok || v != *desired.MaxScale {
-				changes = append(changes, "MaxScale changed")
+			if v, ok := current.MaxScale.Get(); !ok {
+				changes = append(changes, fmt.Sprintf("MaxScale: (unset) -> %d", *desired.MaxScale))
+			} else if v != *desired.MaxScale {
+				changes = append(changes, fmt.Sprintf("MaxScale: %d -> %d", v, *desired.MaxScale))
 			}
 		}
 	}
