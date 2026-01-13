@@ -112,13 +112,13 @@ apprun-dedicated-application-provisioner apply -c apprun.yaml --activate
 ### バージョン一覧の表示 (versions)
 
 ```bash
-apprun-dedicated-application-provisioner versions -c apprun.yaml --app webapp
+apprun-dedicated-application-provisioner versions -c apprun.yaml -a webapp
 ```
 
 | オプション | 説明 |
 |-----------|------|
 | `--config`, `-c` | 設定ファイルのパス（必須） |
-| `--app` | アプリケーション名（必須） |
+| `--app`, `-a` | アプリケーション名（必須） |
 
 出力例:
 ```
@@ -138,16 +138,16 @@ Latest version: 3
 
 ```bash
 # アクティブバージョンと最新バージョンの差分を表示（デフォルト）
-apprun-dedicated-application-provisioner diff -c apprun.yaml --app webapp
+apprun-dedicated-application-provisioner diff -c apprun.yaml -a webapp
 
 # 特定のバージョン間の差分を表示
-apprun-dedicated-application-provisioner diff -c apprun.yaml --app webapp --from 1 --to 3
+apprun-dedicated-application-provisioner diff -c apprun.yaml -a webapp --from 1 --to 3
 ```
 
 | オプション | 説明 |
 |-----------|------|
 | `--config`, `-c` | 設定ファイルのパス（必須） |
-| `--app` | アプリケーション名（必須） |
+| `--app`, `-a` | アプリケーション名（必須） |
 | `--from` | 比較元バージョン（デフォルト: アクティブバージョン） |
 | `--to` | 比較先バージョン（デフォルト: 最新バージョン） |
 
@@ -172,16 +172,16 @@ Note: secret env values and registryPassword cannot be compared (values not retu
 
 ```bash
 # 最新バージョンをアクティブ化（デフォルト）
-apprun-dedicated-application-provisioner activate -c apprun.yaml --app webapp
+apprun-dedicated-application-provisioner activate -c apprun.yaml -a webapp
 
 # 特定のバージョンをアクティブ化
-apprun-dedicated-application-provisioner activate -c apprun.yaml --app webapp -t 2
+apprun-dedicated-application-provisioner activate -c apprun.yaml -a webapp -t 2
 ```
 
 | オプション | 説明 |
 |-----------|------|
 | `--config`, `-c` | 設定ファイルのパス（必須） |
-| `--app` | アプリケーション名（必須） |
+| `--app`, `-a` | アプリケーション名（必須） |
 | `--target`, `-t` | アクティブ化するバージョン（デフォルト: 最新バージョン） |
 
 ## 設定ファイル

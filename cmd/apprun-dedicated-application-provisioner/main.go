@@ -47,17 +47,17 @@ type ApplyCmd struct {
 }
 
 type VersionsCmd struct {
-	App string `help:"Application name" required:""`
+	App string `short:"a" help:"Application name" required:""`
 }
 
 type DiffCmd struct {
-	App  string `help:"Application name" required:""`
+	App  string `short:"a" help:"Application name" required:""`
 	From int    `help:"Source version (default: active version)" default:"0"`
 	To   int    `help:"Target version (default: latest version)" default:"0"`
 }
 
 type ActivateCmd struct {
-	App           string `help:"Application name" required:""`
+	App           string `short:"a" help:"Application name" required:""`
 	TargetVersion int    `name:"target" short:"t" help:"Version to activate (default: latest)" default:"0"`
 }
 
