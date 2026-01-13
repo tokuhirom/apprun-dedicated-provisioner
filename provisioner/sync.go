@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/ogen-go/ogen/ogenerrors"
@@ -43,6 +44,33 @@ type ApplyOptions struct {
 	// If false (default), only creates/updates the version without activating.
 	// If true, also activates the version.
 	Activate bool
+}
+
+// VersionInfo contains information about a single version
+type VersionInfo struct {
+	Version     int
+	Image       string
+	Created     time.Time
+	ActiveNodes int64
+	IsActive    bool
+}
+
+// VersionList contains the list of versions for an application
+type VersionList struct {
+	ApplicationName string
+	ApplicationID   string
+	Versions        []VersionInfo
+	ActiveVersion   int // 0 if no active version
+	LatestVersion   int // 0 if no versions exist
+}
+
+// VersionDiff contains the differences between two versions
+type VersionDiff struct {
+	FromVersion    int
+	ToVersion      int
+	Changes        []string
+	HasSecretEnv   bool // true if secret env vars exist (values cannot be compared)
+	HasRegistryPwd bool // true if registryPassword exists (value cannot be compared)
 }
 
 // Provisioner handles the synchronization of application configurations
@@ -765,4 +793,346 @@ func wrapAPIError(err error, message string) error {
 	}
 
 	return fmt.Errorf("%s: %w", message, err)
+}
+
+// ListVersions returns all versions for an application
+func (p *Provisioner) ListVersions(ctx context.Context, clusterName, appName string) (*VersionList, error) {
+	// Resolve cluster name to ID
+	clusterID, err := p.resolveClusterID(ctx, clusterName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve cluster: %w", err)
+	}
+
+	// Find the application
+	app, err := p.findApplicationByName(ctx, clusterID, appName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get active version
+	activeVersion := 0
+	if v, ok := app.ActiveVersion.Get(); ok {
+		activeVersion = int(v)
+	}
+
+	// List all versions
+	var allVersions []api.ApplicationVersionDeploymentStatus
+	var cursor api.OptApplicationVersionNumber
+
+	for {
+		resp, err := p.client.ListApplicationVersions(ctx, api.ListApplicationVersionsParams{
+			ApplicationID: app.ApplicationID,
+			MaxItems:      30,
+			Cursor:        cursor,
+		})
+		if err != nil {
+			return nil, wrapAPIError(err, "failed to list versions")
+		}
+
+		allVersions = append(allVersions, resp.Versions...)
+
+		if resp.NextCursor.Set {
+			cursor = resp.NextCursor
+		} else {
+			break
+		}
+	}
+
+	// Build result
+	result := &VersionList{
+		ApplicationName: appName,
+		ApplicationID:   uuid.UUID(app.ApplicationID).String(),
+		ActiveVersion:   activeVersion,
+	}
+
+	latestVersion := 0
+	for _, v := range allVersions {
+		versionNum := int(v.Version)
+		if versionNum > latestVersion {
+			latestVersion = versionNum
+		}
+
+		result.Versions = append(result.Versions, VersionInfo{
+			Version:     versionNum,
+			Image:       v.Image,
+			Created:     time.Unix(int64(v.Created), 0),
+			ActiveNodes: v.ActiveNodeCount,
+			IsActive:    versionNum == activeVersion,
+		})
+	}
+	result.LatestVersion = latestVersion
+
+	return result, nil
+}
+
+// GetVersionDiff compares two versions and returns differences
+func (p *Provisioner) GetVersionDiff(ctx context.Context, clusterName, appName string, fromVersion, toVersion int) (*VersionDiff, error) {
+	// Resolve cluster name to ID
+	clusterID, err := p.resolveClusterID(ctx, clusterName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve cluster: %w", err)
+	}
+
+	// Find the application
+	app, err := p.findApplicationByName(ctx, clusterID, appName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Resolve version numbers (0 means active/latest)
+	if fromVersion == 0 {
+		if v, ok := app.ActiveVersion.Get(); ok {
+			fromVersion = int(v)
+		} else {
+			return nil, fmt.Errorf("no active version exists for application %q", appName)
+		}
+	}
+
+	if toVersion == 0 {
+		latestVersion, err := p.getLatestVersion(ctx, app.ApplicationID)
+		if err != nil {
+			return nil, wrapAPIError(err, "failed to get latest version")
+		}
+		if latestVersion == nil {
+			return nil, fmt.Errorf("no versions exist for application %q", appName)
+		}
+		toVersion = int(latestVersion.Version)
+	}
+
+	// Get full details of both versions
+	fromVersionDetail, err := p.client.GetApplicationVersion(ctx, api.GetApplicationVersionParams{
+		ApplicationID: app.ApplicationID,
+		Version:       api.ApplicationVersionNumber(fromVersion),
+	})
+	if err != nil {
+		return nil, wrapAPIError(err, fmt.Sprintf("failed to get version %d", fromVersion))
+	}
+
+	toVersionDetail, err := p.client.GetApplicationVersion(ctx, api.GetApplicationVersionParams{
+		ApplicationID: app.ApplicationID,
+		Version:       api.ApplicationVersionNumber(toVersion),
+	})
+	if err != nil {
+		return nil, wrapAPIError(err, fmt.Sprintf("failed to get version %d", toVersion))
+	}
+
+	// Compare versions
+	diff := &VersionDiff{
+		FromVersion: fromVersion,
+		ToVersion:   toVersion,
+	}
+
+	from := &fromVersionDetail.ApplicationVersion
+	to := &toVersionDetail.ApplicationVersion
+
+	// Compare fields
+	if from.CPU != to.CPU {
+		diff.Changes = append(diff.Changes, fmt.Sprintf("CPU: %d -> %d", from.CPU, to.CPU))
+	}
+	if from.Memory != to.Memory {
+		diff.Changes = append(diff.Changes, fmt.Sprintf("Memory: %d -> %d", from.Memory, to.Memory))
+	}
+	if from.ScalingMode != to.ScalingMode {
+		diff.Changes = append(diff.Changes, fmt.Sprintf("ScalingMode: %s -> %s", from.ScalingMode, to.ScalingMode))
+	}
+	if from.Image != to.Image {
+		diff.Changes = append(diff.Changes, fmt.Sprintf("Image: %s -> %s", from.Image, to.Image))
+	}
+
+	// Compare scaling parameters
+	if fromVal, fromOk := from.FixedScale.Get(); fromOk {
+		if toVal, toOk := to.FixedScale.Get(); toOk {
+			if fromVal != toVal {
+				diff.Changes = append(diff.Changes, fmt.Sprintf("FixedScale: %d -> %d", fromVal, toVal))
+			}
+		} else {
+			diff.Changes = append(diff.Changes, fmt.Sprintf("FixedScale: %d -> (unset)", fromVal))
+		}
+	} else if toVal, toOk := to.FixedScale.Get(); toOk {
+		diff.Changes = append(diff.Changes, fmt.Sprintf("FixedScale: (unset) -> %d", toVal))
+	}
+
+	if fromVal, fromOk := from.MinScale.Get(); fromOk {
+		if toVal, toOk := to.MinScale.Get(); toOk {
+			if fromVal != toVal {
+				diff.Changes = append(diff.Changes, fmt.Sprintf("MinScale: %d -> %d", fromVal, toVal))
+			}
+		} else {
+			diff.Changes = append(diff.Changes, fmt.Sprintf("MinScale: %d -> (unset)", fromVal))
+		}
+	} else if toVal, toOk := to.MinScale.Get(); toOk {
+		diff.Changes = append(diff.Changes, fmt.Sprintf("MinScale: (unset) -> %d", toVal))
+	}
+
+	if fromVal, fromOk := from.MaxScale.Get(); fromOk {
+		if toVal, toOk := to.MaxScale.Get(); toOk {
+			if fromVal != toVal {
+				diff.Changes = append(diff.Changes, fmt.Sprintf("MaxScale: %d -> %d", fromVal, toVal))
+			}
+		} else {
+			diff.Changes = append(diff.Changes, fmt.Sprintf("MaxScale: %d -> (unset)", fromVal))
+		}
+	} else if toVal, toOk := to.MaxScale.Get(); toOk {
+		diff.Changes = append(diff.Changes, fmt.Sprintf("MaxScale: (unset) -> %d", toVal))
+	}
+
+	// Compare Cmd
+	if !stringSlicesEqual(from.Cmd, to.Cmd) {
+		diff.Changes = append(diff.Changes, fmt.Sprintf("Cmd: %v -> %v", from.Cmd, to.Cmd))
+	}
+
+	// Compare registry credentials
+	fromHasReg := !from.RegistryUsername.IsNull() && from.RegistryUsername.Value != ""
+	toHasReg := !to.RegistryUsername.IsNull() && to.RegistryUsername.Value != ""
+
+	if fromHasReg && toHasReg && from.RegistryUsername.Value != to.RegistryUsername.Value {
+		diff.Changes = append(diff.Changes, fmt.Sprintf("RegistryUsername: %s -> %s", from.RegistryUsername.Value, to.RegistryUsername.Value))
+	} else if fromHasReg && !toHasReg {
+		diff.Changes = append(diff.Changes, fmt.Sprintf("RegistryUsername: %s -> (unset)", from.RegistryUsername.Value))
+	} else if !fromHasReg && toHasReg {
+		diff.Changes = append(diff.Changes, fmt.Sprintf("RegistryUsername: (unset) -> %s", to.RegistryUsername.Value))
+	}
+
+	// Check if registryPassword exists (cannot compare values)
+	if fromHasReg || toHasReg {
+		diff.HasRegistryPwd = true
+	}
+
+	// Compare env variables
+	envDiff, hasSecrets := p.compareVersionEnv(from.Env, to.Env)
+	diff.Changes = append(diff.Changes, envDiff...)
+	diff.HasSecretEnv = hasSecrets
+
+	// Compare exposed ports count
+	if len(from.ExposedPorts) != len(to.ExposedPorts) {
+		diff.Changes = append(diff.Changes, fmt.Sprintf("ExposedPorts count: %d -> %d", len(from.ExposedPorts), len(to.ExposedPorts)))
+	}
+
+	return diff, nil
+}
+
+// compareVersionEnv compares environment variables between two versions
+func (p *Provisioner) compareVersionEnv(from, to []api.ReadEnvironmentVariable) ([]string, bool) {
+	var changes []string
+	hasSecrets := false
+
+	// Build maps for comparison
+	fromByKey := make(map[string]api.ReadEnvironmentVariable)
+	for _, env := range from {
+		fromByKey[env.Key] = env
+		if env.Secret {
+			hasSecrets = true
+		}
+	}
+
+	toByKey := make(map[string]api.ReadEnvironmentVariable)
+	for _, env := range to {
+		toByKey[env.Key] = env
+		if env.Secret {
+			hasSecrets = true
+		}
+	}
+
+	// Check for added and changed env vars
+	for _, toEnv := range to {
+		fromEnv, exists := fromByKey[toEnv.Key]
+		if !exists {
+			// New env var
+			if toEnv.Secret {
+				changes = append(changes, fmt.Sprintf("Env add: %s (secret)", toEnv.Key))
+			} else if !toEnv.Value.IsNull() {
+				changes = append(changes, fmt.Sprintf("Env add: %s=%s", toEnv.Key, toEnv.Value.Value))
+			} else {
+				changes = append(changes, fmt.Sprintf("Env add: %s", toEnv.Key))
+			}
+			continue
+		}
+
+		// Env var exists in both, check for changes
+		if toEnv.Secret || fromEnv.Secret {
+			// Cannot compare secret values
+			continue
+		}
+
+		// Compare non-secret values
+		fromValue := ""
+		if !fromEnv.Value.IsNull() {
+			fromValue = fromEnv.Value.Value
+		}
+		toValue := ""
+		if !toEnv.Value.IsNull() {
+			toValue = toEnv.Value.Value
+		}
+		if fromValue != toValue {
+			changes = append(changes, fmt.Sprintf("Env update: %s=%s -> %s", toEnv.Key, fromValue, toValue))
+		}
+	}
+
+	// Check for removed env vars
+	for _, fromEnv := range from {
+		if _, exists := toByKey[fromEnv.Key]; !exists {
+			if fromEnv.Secret {
+				changes = append(changes, fmt.Sprintf("Env remove: %s (secret)", fromEnv.Key))
+			} else {
+				changes = append(changes, fmt.Sprintf("Env remove: %s", fromEnv.Key))
+			}
+		}
+	}
+
+	return changes, hasSecrets
+}
+
+// ActivateVersion activates the specified version (0 means latest)
+func (p *Provisioner) ActivateVersion(ctx context.Context, clusterName, appName string, version int) (int, error) {
+	// Resolve cluster name to ID
+	clusterID, err := p.resolveClusterID(ctx, clusterName)
+	if err != nil {
+		return 0, fmt.Errorf("failed to resolve cluster: %w", err)
+	}
+
+	// Find the application
+	app, err := p.findApplicationByName(ctx, clusterID, appName)
+	if err != nil {
+		return 0, err
+	}
+
+	// Resolve version number (0 means latest)
+	if version == 0 {
+		latestVersion, err := p.getLatestVersion(ctx, app.ApplicationID)
+		if err != nil {
+			return 0, wrapAPIError(err, "failed to get latest version")
+		}
+		if latestVersion == nil {
+			return 0, fmt.Errorf("no versions exist for application %q", appName)
+		}
+		version = int(latestVersion.Version)
+	}
+
+	// Activate the version
+	updateReq := &api.UpdateApplication{}
+	updateReq.ActiveVersion.SetTo(int32(version))
+	err = p.client.UpdateApplication(ctx, updateReq, api.UpdateApplicationParams{
+		ApplicationID: app.ApplicationID,
+	})
+	if err != nil {
+		return 0, wrapAPIError(err, "failed to activate version")
+	}
+
+	return version, nil
+}
+
+// findApplicationByName finds an application by name in the given cluster
+func (p *Provisioner) findApplicationByName(ctx context.Context, clusterID uuid.UUID, appName string) (*api.ReadApplicationDetail, error) {
+	apps, err := p.listAllApplications(ctx, clusterID)
+	if err != nil {
+		return nil, wrapAPIError(err, "failed to list applications")
+	}
+
+	for _, app := range apps {
+		if app.Name == appName {
+			return app, nil
+		}
+	}
+
+	return nil, fmt.Errorf("application %q not found in cluster", appName)
 }
