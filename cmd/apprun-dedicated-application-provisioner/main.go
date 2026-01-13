@@ -127,11 +127,11 @@ func (c *ApplyCmd) Run(cli *CLI) error {
 }
 
 func createClient() (*provisioner.Provisioner, error) {
-	accessToken := os.Getenv("SAKURA_ACCESS_TOKEN")
-	accessTokenSecret := os.Getenv("SAKURA_ACCESS_TOKEN_SECRET")
+	accessToken := getEnvWithFallback("SAKURA_ACCESS_TOKEN", "SAKURACLOUD_ACCESS_TOKEN")
+	accessTokenSecret := getEnvWithFallback("SAKURA_ACCESS_TOKEN_SECRET", "SAKURACLOUD_ACCESS_TOKEN_SECRET")
 
 	if accessToken == "" || accessTokenSecret == "" {
-		return nil, fmt.Errorf("SAKURA_ACCESS_TOKEN and SAKURA_ACCESS_TOKEN_SECRET environment variables are required")
+		return nil, fmt.Errorf("SAKURA_ACCESS_TOKEN (or SAKURACLOUD_ACCESS_TOKEN) and SAKURA_ACCESS_TOKEN_SECRET (or SAKURACLOUD_ACCESS_TOKEN_SECRET) environment variables are required")
 	}
 
 	client, err := provisioner.NewClient(provisioner.ClientConfig{
@@ -181,4 +181,14 @@ func printPlan(plan *provisioner.Plan) {
 	}
 
 	fmt.Printf("\nPlan: %d to create, %d to update, %d unchanged.\n", createCount, updateCount, noopCount)
+}
+
+// getEnvWithFallback returns the value of the first environment variable that is set
+func getEnvWithFallback(keys ...string) string {
+	for _, key := range keys {
+		if value := os.Getenv(key); value != "" {
+			return value
+		}
+	}
+	return ""
 }
