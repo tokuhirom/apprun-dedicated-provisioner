@@ -11,6 +11,7 @@ import (
 
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/api"
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/config"
+	"github.com/tokuhirom/apprun-dedicated-application-provisioner/state"
 )
 
 // ActionType represents the type of action to perform
@@ -46,13 +47,17 @@ type ApplyOptions struct {
 
 // Provisioner handles the synchronization of application configurations
 type Provisioner struct {
-	client *api.Client
+	client     *api.Client
+	state      *state.State
+	configPath string
 }
 
 // NewProvisioner creates a new Provisioner
-func NewProvisioner(client *api.Client) *Provisioner {
+func NewProvisioner(client *api.Client, st *state.State, configPath string) *Provisioner {
 	return &Provisioner{
-		client: client,
+		client:     client,
+		state:      st,
+		configPath: configPath,
 	}
 }
 
@@ -131,6 +136,8 @@ func (p *Provisioner) Apply(ctx context.Context, cfg *config.ClusterConfig, plan
 		configByName[cfg.Applications[i].Name] = &cfg.Applications[i]
 	}
 
+	stateModified := false
+
 	for _, action := range plan.Actions {
 		appCfg, ok := configByName[action.ApplicationName]
 		if !ok {
@@ -142,14 +149,38 @@ func (p *Provisioner) Apply(ctx context.Context, cfg *config.ClusterConfig, plan
 			if err := p.createApplication(ctx, clusterID, appCfg, opts); err != nil {
 				return fmt.Errorf("failed to create application %s: %w", action.ApplicationName, err)
 			}
+			// Update state with password hash
+			if appCfg.Spec.RegistryPassword != nil {
+				p.state.SetPasswordHash(appCfg.Name, state.HashPassword(*appCfg.Spec.RegistryPassword))
+				stateModified = true
+			}
 		case ActionUpdate:
 			existingApp := existingByName[action.ApplicationName]
 			if err := p.updateApplication(ctx, existingApp, appCfg, opts); err != nil {
 				return fmt.Errorf("failed to update application %s: %w", action.ApplicationName, err)
 			}
+			// Update state with password hash
+			if appCfg.Spec.RegistryPassword != nil {
+				p.state.SetPasswordHash(appCfg.Name, state.HashPassword(*appCfg.Spec.RegistryPassword))
+				stateModified = true
+			} else {
+				// Remove hash if password was removed
+				if p.state.GetPasswordHash(appCfg.Name) != "" {
+					p.state.RemovePasswordHash(appCfg.Name)
+					stateModified = true
+				}
+			}
 		case ActionNoop:
 			log.Printf("Application %q is up to date", action.ApplicationName)
 		}
+	}
+
+	// Save state file if modified
+	if stateModified {
+		if err := p.state.Save(p.configPath); err != nil {
+			return fmt.Errorf("failed to save state file: %w", err)
+		}
+		log.Printf("State file updated: %s", state.GetStatePath(p.configPath))
 	}
 
 	return nil
@@ -175,7 +206,7 @@ func (p *Provisioner) planUpdate(ctx context.Context, existing *api.ReadApplicat
 	}
 
 	// Compare settings (excluding image)
-	changes := p.compareVersion(latestVersion, &appCfg.Spec)
+	changes := p.compareVersion(appCfg.Name, latestVersion, &appCfg.Spec)
 	if len(changes) > 0 {
 		action.Action = ActionUpdate
 		action.Changes = changes
@@ -185,7 +216,7 @@ func (p *Provisioner) planUpdate(ctx context.Context, existing *api.ReadApplicat
 }
 
 // compareVersion compares the current version with desired config and returns list of changes
-func (p *Provisioner) compareVersion(current *api.ReadApplicationVersionDetail, desired *config.ApplicationSpec) []string {
+func (p *Provisioner) compareVersion(appName string, current *api.ReadApplicationVersionDetail, desired *config.ApplicationSpec) []string {
 	var changes []string
 
 	if current.CPU != desired.CPU {
@@ -250,9 +281,19 @@ func (p *Provisioner) compareVersion(current *api.ReadApplicationVersionDetail, 
 		changes = append(changes, fmt.Sprintf("RegistryUsername: %s -> %s", current.RegistryUsername.Value, *desired.RegistryUsername))
 	}
 
-	// Password is not returned from server, so if YAML specifies a password, treat it as a change
+	// Compare registry password using state file hash
+	storedHash := p.state.GetPasswordHash(appName)
 	if desired.RegistryPassword != nil {
-		changes = append(changes, "RegistryPassword: (updating)")
+		desiredHash := state.HashPassword(*desired.RegistryPassword)
+		if storedHash == "" {
+			changes = append(changes, "RegistryPassword: (new)")
+		} else if storedHash != desiredHash {
+			changes = append(changes, "RegistryPassword: (changed)")
+		}
+		// If hashes match, no change needed
+	} else if storedHash != "" {
+		// Password was removed from YAML
+		changes = append(changes, "RegistryPassword: (removed)")
 	}
 
 	return changes
