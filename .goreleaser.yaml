@@ -63,6 +63,20 @@ dockers_v2:
       "org.opencontainers.image.source": "{{ .GitURL }}"
       "org.opencontainers.image.revision": "{{ .FullCommit }}"
 
+brews:
+  - repository:
+      owner: tokuhirom
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    name: apprun-dedicated-application-provisioner
+    homepage: "https://github.com/tokuhirom/apprun-dedicated-application-provisioner"
+    description: "CLI tool for managing Sakura Cloud AppRun Dedicated application provisioning"
+    license: "MIT"
+    test: |
+      system "#{bin}/apprun-dedicated-application-provisioner", "--version"
+    install: |
+      bin.install "apprun-dedicated-application-provisioner"
+
 release:
   github:
     owner: tokuhirom
