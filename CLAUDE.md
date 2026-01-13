@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CLI tool for managing Sakura Cloud's App Run Dedicated application provisioning. Implements Infrastructure as Code (IaC) using YAML configuration with a Terraform-style plan/apply workflow.
+CLI tool for managing Sakura Cloud's AppRun Dedicated application provisioning. Implements Infrastructure as Code (IaC) using YAML configuration with a Terraform-style plan/apply workflow.
 
 ## Build Commands
 
