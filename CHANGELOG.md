@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.10](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.9...v0.0.10) - 2026-01-13
+- fix: correct "App Run" to "AppRun" naming by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/21
+
 ## [v0.0.9](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.8...v0.0.9) - 2026-01-10
 - fix: update goreleaser config for v2.12+ compatibility by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/19
 
