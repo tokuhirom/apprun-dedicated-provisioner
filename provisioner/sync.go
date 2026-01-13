@@ -292,10 +292,9 @@ func (p *Provisioner) compareVersion(appName string, current *api.ReadApplicatio
 		}
 	}
 
-	// Compare exposed ports count
-	if len(current.ExposedPorts) != len(desired.ExposedPorts) {
-		changes = append(changes, fmt.Sprintf("ExposedPorts count: %d -> %d", len(current.ExposedPorts), len(desired.ExposedPorts)))
-	}
+	// Compare exposed ports
+	portChanges := p.compareExposedPorts(current.ExposedPorts, desired.ExposedPorts)
+	changes = append(changes, portChanges...)
 
 	// Compare env variables
 	envChanges := p.compareEnv(appName, current.Env, desired.Env)
@@ -402,6 +401,102 @@ func (p *Provisioner) compareEnv(appName string, current []api.ReadEnvironmentVa
 			} else {
 				changes = append(changes, fmt.Sprintf("Env remove: %s", currentEnv.Key))
 			}
+		}
+	}
+
+	return changes
+}
+
+// compareExposedPorts compares exposed port configurations and returns list of changes
+func (p *Provisioner) compareExposedPorts(current []api.ExposedPort, desired []config.ExposedPortConfig) []string {
+	var changes []string
+
+	// Check for count changes first
+	if len(current) != len(desired) {
+		changes = append(changes, fmt.Sprintf("ExposedPorts count: %d -> %d", len(current), len(desired)))
+	}
+
+	// Build maps by targetPort for comparison
+	currentByPort := make(map[int32]api.ExposedPort)
+	for _, port := range current {
+		currentByPort[int32(port.TargetPort)] = port
+	}
+
+	desiredByPort := make(map[int32]config.ExposedPortConfig)
+	for _, port := range desired {
+		desiredByPort[port.TargetPort] = port
+	}
+
+	// Check for added and changed ports
+	for _, desiredPort := range desired {
+		currentPort, exists := currentByPort[desiredPort.TargetPort]
+		if !exists {
+			changes = append(changes, fmt.Sprintf("ExposedPort add: targetPort=%d", desiredPort.TargetPort))
+			continue
+		}
+
+		// Compare fields
+		prefix := fmt.Sprintf("ExposedPort[%d]", desiredPort.TargetPort)
+
+		// LoadBalancerPort
+		currentLBPort := int32(0)
+		currentHasLB := false
+		if !currentPort.LoadBalancerPort.IsNull() {
+			currentLBPort = int32(currentPort.LoadBalancerPort.Value)
+			currentHasLB = true
+		}
+		desiredLBPort := int32(0)
+		desiredHasLB := false
+		if desiredPort.LoadBalancerPort != nil {
+			desiredLBPort = *desiredPort.LoadBalancerPort
+			desiredHasLB = true
+		}
+
+		if currentHasLB && desiredHasLB && currentLBPort != desiredLBPort {
+			changes = append(changes, fmt.Sprintf("%s LoadBalancerPort: %d -> %d", prefix, currentLBPort, desiredLBPort))
+		} else if currentHasLB && !desiredHasLB {
+			changes = append(changes, fmt.Sprintf("%s LoadBalancerPort: %d -> (unset)", prefix, currentLBPort))
+		} else if !currentHasLB && desiredHasLB {
+			changes = append(changes, fmt.Sprintf("%s LoadBalancerPort: (unset) -> %d", prefix, desiredLBPort))
+		}
+
+		// UseLetsEncrypt
+		if currentPort.UseLetsEncrypt != desiredPort.UseLetsEncrypt {
+			changes = append(changes, fmt.Sprintf("%s UseLetsEncrypt: %t -> %t", prefix, currentPort.UseLetsEncrypt, desiredPort.UseLetsEncrypt))
+		}
+
+		// Host
+		if !stringSlicesEqual(currentPort.Host, desiredPort.Host) {
+			changes = append(changes, fmt.Sprintf("%s Host: %v -> %v", prefix, currentPort.Host, desiredPort.Host))
+		}
+
+		// HealthCheck
+		currentHasHC := !currentPort.HealthCheck.IsNull()
+		desiredHasHC := desiredPort.HealthCheck != nil
+
+		if currentHasHC && desiredHasHC {
+			currentHC := currentPort.HealthCheck.Value
+			desiredHC := desiredPort.HealthCheck
+			if currentHC.Path != desiredHC.Path {
+				changes = append(changes, fmt.Sprintf("%s HealthCheck.Path: %s -> %s", prefix, currentHC.Path, desiredHC.Path))
+			}
+			if currentHC.IntervalSeconds != desiredHC.IntervalSeconds {
+				changes = append(changes, fmt.Sprintf("%s HealthCheck.IntervalSeconds: %d -> %d", prefix, currentHC.IntervalSeconds, desiredHC.IntervalSeconds))
+			}
+			if currentHC.TimeoutSeconds != desiredHC.TimeoutSeconds {
+				changes = append(changes, fmt.Sprintf("%s HealthCheck.TimeoutSeconds: %d -> %d", prefix, currentHC.TimeoutSeconds, desiredHC.TimeoutSeconds))
+			}
+		} else if currentHasHC && !desiredHasHC {
+			changes = append(changes, fmt.Sprintf("%s HealthCheck: (set) -> (unset)", prefix))
+		} else if !currentHasHC && desiredHasHC {
+			changes = append(changes, fmt.Sprintf("%s HealthCheck: (unset) -> (set)", prefix))
+		}
+	}
+
+	// Check for removed ports
+	for _, currentPort := range current {
+		if _, exists := desiredByPort[int32(currentPort.TargetPort)]; !exists {
+			changes = append(changes, fmt.Sprintf("ExposedPort remove: targetPort=%d", currentPort.TargetPort))
 		}
 	}
 
@@ -1003,10 +1098,9 @@ func (p *Provisioner) GetVersionDiff(ctx context.Context, clusterName, appName s
 	diff.Changes = append(diff.Changes, envDiff...)
 	diff.HasSecretEnv = hasSecrets
 
-	// Compare exposed ports count
-	if len(from.ExposedPorts) != len(to.ExposedPorts) {
-		diff.Changes = append(diff.Changes, fmt.Sprintf("ExposedPorts count: %d -> %d", len(from.ExposedPorts), len(to.ExposedPorts)))
-	}
+	// Compare exposed ports
+	portChanges := p.compareVersionExposedPorts(from.ExposedPorts, to.ExposedPorts)
+	diff.Changes = append(diff.Changes, portChanges...)
 
 	return diff, nil
 }
@@ -1080,6 +1174,103 @@ func (p *Provisioner) compareVersionEnv(from, to []api.ReadEnvironmentVariable) 
 	}
 
 	return changes, hasSecrets
+}
+
+// compareVersionExposedPorts compares exposed ports between two API versions
+func (p *Provisioner) compareVersionExposedPorts(from, to []api.ExposedPort) []string {
+	var changes []string
+
+	// Check for count changes first
+	if len(from) != len(to) {
+		changes = append(changes, fmt.Sprintf("ExposedPorts count: %d -> %d", len(from), len(to)))
+	}
+
+	// Build maps by targetPort for comparison
+	fromByPort := make(map[int32]api.ExposedPort)
+	for _, port := range from {
+		fromByPort[int32(port.TargetPort)] = port
+	}
+
+	toByPort := make(map[int32]api.ExposedPort)
+	for _, port := range to {
+		toByPort[int32(port.TargetPort)] = port
+	}
+
+	// Check for added and changed ports
+	for _, toPort := range to {
+		targetPort := int32(toPort.TargetPort)
+		fromPort, exists := fromByPort[targetPort]
+		if !exists {
+			changes = append(changes, fmt.Sprintf("ExposedPort add: targetPort=%d", targetPort))
+			continue
+		}
+
+		// Compare fields
+		prefix := fmt.Sprintf("ExposedPort[%d]", targetPort)
+
+		// LoadBalancerPort
+		fromLBPort := int32(0)
+		fromHasLB := false
+		if !fromPort.LoadBalancerPort.IsNull() {
+			fromLBPort = int32(fromPort.LoadBalancerPort.Value)
+			fromHasLB = true
+		}
+		toLBPort := int32(0)
+		toHasLB := false
+		if !toPort.LoadBalancerPort.IsNull() {
+			toLBPort = int32(toPort.LoadBalancerPort.Value)
+			toHasLB = true
+		}
+
+		if fromHasLB && toHasLB && fromLBPort != toLBPort {
+			changes = append(changes, fmt.Sprintf("%s LoadBalancerPort: %d -> %d", prefix, fromLBPort, toLBPort))
+		} else if fromHasLB && !toHasLB {
+			changes = append(changes, fmt.Sprintf("%s LoadBalancerPort: %d -> (unset)", prefix, fromLBPort))
+		} else if !fromHasLB && toHasLB {
+			changes = append(changes, fmt.Sprintf("%s LoadBalancerPort: (unset) -> %d", prefix, toLBPort))
+		}
+
+		// UseLetsEncrypt
+		if fromPort.UseLetsEncrypt != toPort.UseLetsEncrypt {
+			changes = append(changes, fmt.Sprintf("%s UseLetsEncrypt: %t -> %t", prefix, fromPort.UseLetsEncrypt, toPort.UseLetsEncrypt))
+		}
+
+		// Host
+		if !stringSlicesEqual(fromPort.Host, toPort.Host) {
+			changes = append(changes, fmt.Sprintf("%s Host: %v -> %v", prefix, fromPort.Host, toPort.Host))
+		}
+
+		// HealthCheck
+		fromHasHC := !fromPort.HealthCheck.IsNull()
+		toHasHC := !toPort.HealthCheck.IsNull()
+
+		if fromHasHC && toHasHC {
+			fromHC := fromPort.HealthCheck.Value
+			toHC := toPort.HealthCheck.Value
+			if fromHC.Path != toHC.Path {
+				changes = append(changes, fmt.Sprintf("%s HealthCheck.Path: %s -> %s", prefix, fromHC.Path, toHC.Path))
+			}
+			if fromHC.IntervalSeconds != toHC.IntervalSeconds {
+				changes = append(changes, fmt.Sprintf("%s HealthCheck.IntervalSeconds: %d -> %d", prefix, fromHC.IntervalSeconds, toHC.IntervalSeconds))
+			}
+			if fromHC.TimeoutSeconds != toHC.TimeoutSeconds {
+				changes = append(changes, fmt.Sprintf("%s HealthCheck.TimeoutSeconds: %d -> %d", prefix, fromHC.TimeoutSeconds, toHC.TimeoutSeconds))
+			}
+		} else if fromHasHC && !toHasHC {
+			changes = append(changes, fmt.Sprintf("%s HealthCheck: (set) -> (unset)", prefix))
+		} else if !fromHasHC && toHasHC {
+			changes = append(changes, fmt.Sprintf("%s HealthCheck: (unset) -> (set)", prefix))
+		}
+	}
+
+	// Check for removed ports
+	for _, fromPort := range from {
+		if _, exists := toByPort[int32(fromPort.TargetPort)]; !exists {
+			changes = append(changes, fmt.Sprintf("ExposedPort remove: targetPort=%d", fromPort.TargetPort))
+		}
+	}
+
+	return changes
 }
 
 // ActivateVersion activates the specified version (0 means latest)
