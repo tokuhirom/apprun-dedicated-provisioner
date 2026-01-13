@@ -446,7 +446,7 @@ func TestCreatePlan_ExistingApplication_EnvCountChanged(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, plan.Actions, 1)
 	assert.Equal(t, ActionUpdate, plan.Actions[0].Action)
-	assert.Contains(t, plan.Actions[0].Changes, "Env count: 0 -> 1")
+	assert.Contains(t, plan.Actions[0].Changes, "Env add: APP_ENV=production")
 }
 
 func TestCreatePlan_ExistingApplication_MultipleChanges(t *testing.T) {

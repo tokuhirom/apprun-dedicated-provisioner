@@ -154,6 +154,10 @@ func (p *Provisioner) Apply(ctx context.Context, cfg *config.ClusterConfig, plan
 				p.state.SetPasswordVersion(appCfg.Name, appCfg.Spec.RegistryPasswordVersion)
 				stateModified = true
 			}
+			// Update state with secret env versions
+			if p.updateSecretEnvVersions(appCfg) {
+				stateModified = true
+			}
 		case ActionUpdate:
 			existingApp := existingByName[action.ApplicationName]
 			if err := p.updateApplication(ctx, existingApp, appCfg, opts); err != nil {
@@ -170,6 +174,10 @@ func (p *Provisioner) Apply(ctx context.Context, cfg *config.ClusterConfig, plan
 			} else if storedVersion != nil {
 				// Remove version if password was removed
 				p.state.SetPasswordVersion(appCfg.Name, nil)
+				stateModified = true
+			}
+			// Update state with secret env versions
+			if p.updateSecretEnvVersions(appCfg) {
 				stateModified = true
 			}
 		case ActionNoop:
@@ -261,10 +269,9 @@ func (p *Provisioner) compareVersion(appName string, current *api.ReadApplicatio
 		changes = append(changes, fmt.Sprintf("ExposedPorts count: %d -> %d", len(current.ExposedPorts), len(desired.ExposedPorts)))
 	}
 
-	// Compare env count
-	if len(current.Env) != len(desired.Env) {
-		changes = append(changes, fmt.Sprintf("Env count: %d -> %d", len(current.Env), len(desired.Env)))
-	}
+	// Compare env variables
+	envChanges := p.compareEnv(appName, current.Env, desired.Env)
+	changes = append(changes, envChanges...)
 
 	// Compare Cmd
 	if !stringSlicesEqual(current.Cmd, desired.Cmd) {
@@ -300,6 +307,92 @@ func (p *Provisioner) compareVersion(appName string, current *api.ReadApplicatio
 	}
 
 	return changes
+}
+
+// compareEnv compares environment variables and returns list of changes
+func (p *Provisioner) compareEnv(appName string, current []api.ReadEnvironmentVariable, desired []config.EnvVarConfig) []string {
+	var changes []string
+
+	// Build maps for comparison
+	currentByKey := make(map[string]api.ReadEnvironmentVariable)
+	for _, env := range current {
+		currentByKey[env.Key] = env
+	}
+
+	desiredByKey := make(map[string]config.EnvVarConfig)
+	for _, env := range desired {
+		desiredByKey[env.Key] = env
+	}
+
+	// Check for added and changed env vars
+	for _, desiredEnv := range desired {
+		currentEnv, exists := currentByKey[desiredEnv.Key]
+		if !exists {
+			// New env var
+			if desiredEnv.Secret {
+				changes = append(changes, fmt.Sprintf("Env add: %s (secret)", desiredEnv.Key))
+			} else if desiredEnv.Value != nil {
+				changes = append(changes, fmt.Sprintf("Env add: %s=%s", desiredEnv.Key, *desiredEnv.Value))
+			} else {
+				changes = append(changes, fmt.Sprintf("Env add: %s", desiredEnv.Key))
+			}
+			continue
+		}
+
+		// Env var exists, check for changes
+		if desiredEnv.Secret {
+			// For secrets, compare using secretVersion in state file
+			storedVersion := p.state.GetSecretEnvVersion(appName, desiredEnv.Key)
+			if desiredEnv.SecretVersion != nil {
+				if storedVersion == nil {
+					changes = append(changes, fmt.Sprintf("Env update: %s (secret, version: new -> %d)", desiredEnv.Key, *desiredEnv.SecretVersion))
+				} else if *storedVersion != *desiredEnv.SecretVersion {
+					changes = append(changes, fmt.Sprintf("Env update: %s (secret, version: %d -> %d)", desiredEnv.Key, *storedVersion, *desiredEnv.SecretVersion))
+				}
+			}
+		} else {
+			// For non-secrets, compare values
+			currentValue := ""
+			if !currentEnv.Value.IsNull() {
+				currentValue = currentEnv.Value.Value
+			}
+			desiredValue := ""
+			if desiredEnv.Value != nil {
+				desiredValue = *desiredEnv.Value
+			}
+			if currentValue != desiredValue {
+				changes = append(changes, fmt.Sprintf("Env update: %s=%s -> %s", desiredEnv.Key, currentValue, desiredValue))
+			}
+		}
+	}
+
+	// Check for removed env vars
+	for _, currentEnv := range current {
+		if _, exists := desiredByKey[currentEnv.Key]; !exists {
+			if currentEnv.Secret {
+				changes = append(changes, fmt.Sprintf("Env remove: %s (secret)", currentEnv.Key))
+			} else {
+				changes = append(changes, fmt.Sprintf("Env remove: %s", currentEnv.Key))
+			}
+		}
+	}
+
+	return changes
+}
+
+// updateSecretEnvVersions updates the state with secret env versions from config
+func (p *Provisioner) updateSecretEnvVersions(appCfg *config.ApplicationConfig) bool {
+	modified := false
+	for _, env := range appCfg.Spec.Env {
+		if env.Secret && env.SecretVersion != nil {
+			storedVersion := p.state.GetSecretEnvVersion(appCfg.Name, env.Key)
+			if storedVersion == nil || *storedVersion != *env.SecretVersion {
+				p.state.SetSecretEnvVersion(appCfg.Name, env.Key, env.SecretVersion)
+				modified = true
+			}
+		}
+	}
+	return modified
 }
 
 // stringSlicesEqual compares two string slices for equality
