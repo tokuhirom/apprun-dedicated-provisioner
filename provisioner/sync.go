@@ -238,6 +238,23 @@ func (p *Provisioner) compareVersion(current *api.ReadApplicationVersionDetail, 
 		changes = append(changes, fmt.Sprintf("Cmd: %v -> %v", current.Cmd, desired.Cmd))
 	}
 
+	// Compare registry credentials
+	serverHasRegistryUser := !current.RegistryUsername.IsNull() && current.RegistryUsername.Value != ""
+	desiredHasRegistryUser := desired.RegistryUsername != nil && *desired.RegistryUsername != ""
+
+	if !serverHasRegistryUser && desiredHasRegistryUser {
+		changes = append(changes, fmt.Sprintf("RegistryUsername: (unset) -> %s", *desired.RegistryUsername))
+	} else if serverHasRegistryUser && !desiredHasRegistryUser {
+		changes = append(changes, fmt.Sprintf("RegistryUsername: %s -> (unset)", current.RegistryUsername.Value))
+	} else if serverHasRegistryUser && desiredHasRegistryUser && current.RegistryUsername.Value != *desired.RegistryUsername {
+		changes = append(changes, fmt.Sprintf("RegistryUsername: %s -> %s", current.RegistryUsername.Value, *desired.RegistryUsername))
+	}
+
+	// Password is not returned from server, so if YAML specifies a password, treat it as a change
+	if desired.RegistryPassword != nil {
+		changes = append(changes, "RegistryPassword: (updating)")
+	}
+
 	return changes
 }
 
