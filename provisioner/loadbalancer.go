@@ -407,7 +407,7 @@ func buildCreateLBRequest(cfg config.LoadBalancerConfig) *api.CreateLoadBalancer
 func (p *Provisioner) waitForLBDeletion(ctx context.Context, clusterID uuid.UUID, asgID api.AutoScalingGroupID, lbID api.LoadBalancerID, lbName string) error {
 	startTime := time.Now()
 	pollInterval := 3 * time.Second
-	timeout := 5 * time.Minute
+	timeout := 10 * time.Minute
 
 	for {
 		elapsed := time.Since(startTime)

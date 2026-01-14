@@ -328,7 +328,7 @@ func buildCreateASGRequest(cfg config.AutoScalingGroupConfig) *api.CreateAutoSca
 func (p *Provisioner) waitForASGDeletion(ctx context.Context, clusterID uuid.UUID, asgID api.AutoScalingGroupID, asgName string) error {
 	startTime := time.Now()
 	pollInterval := 3 * time.Second
-	timeout := 5 * time.Minute
+	timeout := 10 * time.Minute
 
 	for {
 		elapsed := time.Since(startTime)
