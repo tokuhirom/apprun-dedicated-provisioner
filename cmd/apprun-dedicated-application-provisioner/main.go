@@ -131,17 +131,17 @@ func (c *ApplyCmd) Run(cli *CLI) error {
 		hasChanges = true
 	}
 
-	// Check for ASG changes
+	// Check for ASG changes (skip doesn't count as a change)
 	for _, action := range plan.ASGActions {
-		if action.Action != provisioner.ASGActionNoop {
+		if action.Action != provisioner.ASGActionNoop && action.Action != provisioner.ASGActionSkip {
 			hasChanges = true
 			break
 		}
 	}
 
-	// Check for LB changes
+	// Check for LB changes (skip doesn't count as a change)
 	for _, action := range plan.LBActions {
-		if action.Action != provisioner.LBActionNoop {
+		if action.Action != provisioner.LBActionNoop && action.Action != provisioner.LBActionSkip {
 			hasChanges = true
 			break
 		}
@@ -316,12 +316,12 @@ func printPlan(plan *provisioner.Plan) {
 	// Print ASG changes
 	asgHasChanges := false
 	for _, action := range plan.ASGActions {
-		if action.Action != provisioner.ASGActionNoop {
+		if action.Action != provisioner.ASGActionNoop && action.Action != provisioner.ASGActionSkip {
 			asgHasChanges = true
 			break
 		}
 	}
-	if asgHasChanges {
+	if asgHasChanges || len(plan.ASGActions) > 0 {
 		fmt.Println("=== Auto Scaling Groups ===")
 		for _, action := range plan.ASGActions {
 			switch action.Action {
@@ -337,6 +337,8 @@ func printPlan(plan *provisioner.Plan) {
 				for _, change := range action.Changes {
 					fmt.Printf("    %s\n", change)
 				}
+			case provisioner.ASGActionSkip:
+				fmt.Printf("  %s (not in YAML, skipping)\n", action.Name)
 			case provisioner.ASGActionNoop:
 				fmt.Printf("  %s (no changes)\n", action.Name)
 			}
@@ -347,12 +349,12 @@ func printPlan(plan *provisioner.Plan) {
 	// Print LB changes
 	lbHasChanges := false
 	for _, action := range plan.LBActions {
-		if action.Action != provisioner.LBActionNoop {
+		if action.Action != provisioner.LBActionNoop && action.Action != provisioner.LBActionSkip {
 			lbHasChanges = true
 			break
 		}
 	}
-	if lbHasChanges {
+	if lbHasChanges || len(plan.LBActions) > 0 {
 		fmt.Println("=== Load Balancers ===")
 		for _, action := range plan.LBActions {
 			switch action.Action {
@@ -368,6 +370,8 @@ func printPlan(plan *provisioner.Plan) {
 				for _, change := range action.Changes {
 					fmt.Printf("    %s\n", change)
 				}
+			case provisioner.LBActionSkip:
+				fmt.Printf("  %s (not in YAML, skipping, ASG: %s)\n", action.Name, action.ASGName)
 			case provisioner.LBActionNoop:
 				fmt.Printf("  %s (no changes, ASG: %s)\n", action.Name, action.ASGName)
 			}

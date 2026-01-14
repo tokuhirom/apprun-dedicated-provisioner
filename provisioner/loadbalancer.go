@@ -18,6 +18,7 @@ const (
 	LBActionDelete   LBActionType = "delete"
 	LBActionRecreate LBActionType = "recreate"
 	LBActionNoop     LBActionType = "noop"
+	LBActionSkip     LBActionType = "skip" // exists but not in YAML, skip
 )
 
 // LBAction represents a planned action for a LoadBalancer
@@ -109,19 +110,15 @@ func (p *Provisioner) planLBChanges(ctx context.Context, clusterID uuid.UUID, de
 		}
 	}
 
-	// Check for LBs to delete (exist in current but not in desired)
+	// Check for LBs not in YAML (skip instead of delete)
 	for asgName, lbMap := range currentLBs {
-		asgID := asgNameToID[asgName]
-		for lbName, lb := range lbMap {
+		for lbName := range lbMap {
 			if desiredLBs[asgName] == nil || !desiredLBs[asgName][lbName] {
-				lbID := lb.LoadBalancerID
 				actions = append(actions, LBAction{
-					Action:     LBActionDelete,
-					Name:       lbName,
-					ASGName:    asgName,
-					Changes:    []string{"LB will be deleted"},
-					ExistingID: &lbID,
-					ASGID:      &asgID,
+					Action:  LBActionSkip,
+					Name:    lbName,
+					ASGName: asgName,
+					Changes: []string{"not in YAML, skipping"},
 				})
 			}
 		}

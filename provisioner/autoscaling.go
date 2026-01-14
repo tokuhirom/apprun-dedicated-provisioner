@@ -18,6 +18,7 @@ const (
 	ASGActionDelete   ASGActionType = "delete"
 	ASGActionRecreate ASGActionType = "recreate"
 	ASGActionNoop     ASGActionType = "noop"
+	ASGActionSkip     ASGActionType = "skip" // exists but not in YAML, skip
 )
 
 // ASGAction represents a planned action for an ASG
@@ -79,15 +80,13 @@ func (p *Provisioner) planASGChanges(ctx context.Context, clusterID uuid.UUID, d
 		}
 	}
 
-	// Check for ASGs to delete (exist in current but not in desired)
-	for name, current := range currentByName {
+	// Check for ASGs not in YAML (skip instead of delete)
+	for name := range currentByName {
 		if !desiredNames[name] {
-			asgID := current.AutoScalingGroupID
 			actions = append(actions, ASGAction{
-				Action:     ASGActionDelete,
-				Name:       name,
-				Changes:    []string{"ASG will be deleted"},
-				ExistingID: &asgID,
+				Action:  ASGActionSkip,
+				Name:    name,
+				Changes: []string{"not in YAML, skipping"},
 			})
 		}
 	}
