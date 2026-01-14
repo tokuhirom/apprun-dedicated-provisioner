@@ -375,5 +375,6 @@ func truncateString(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
 	}
-	return s[:maxLen-3] + "..."
+	// Keep the tail (tag part is usually more important for images)
+	return "..." + s[len(s)-(maxLen-3):]
 }
