@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.23](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.22...v0.0.23) - 2026-01-14
+- feat: add infrastructure provisioning support (ASG, LB, Cluster) and dump command by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/49
+
 ## [v0.0.22](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.21...v0.0.22) - 2026-01-14
 - fix: keep tail when truncating image name by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/47
 
