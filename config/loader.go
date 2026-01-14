@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 
@@ -26,13 +27,15 @@ func Load(path string) (*ClusterConfig, error) {
 	return &config, nil
 }
 
-// ToYAML serializes the configuration to YAML format
+// ToYAML serializes the configuration to YAML format with 2-space indentation
 func (c *ClusterConfig) ToYAML() (string, error) {
-	data, err := yaml.Marshal(c)
-	if err != nil {
+	var buf bytes.Buffer
+	encoder := yaml.NewEncoder(&buf)
+	encoder.SetIndent(2)
+	if err := encoder.Encode(c); err != nil {
 		return "", fmt.Errorf("failed to marshal config: %w", err)
 	}
-	return string(data), nil
+	return buf.String(), nil
 }
 
 // validate checks if the configuration is valid
