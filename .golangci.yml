@@ -18,6 +18,9 @@ linters:
     - bodyclose
     - noctx
     - prealloc
+  settings:
+    misspell:
+      locale: US
 
 formatters:
   enable:
@@ -28,11 +31,6 @@ formatters:
       local-prefixes:
         - github.com/tokuhirom/apprun-dedicated-application-provisioner
 
-linters-settings:
-  misspell:
-    locale: US
-
 issues:
-  exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
