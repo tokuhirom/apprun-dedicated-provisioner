@@ -183,6 +183,14 @@ func (p *Provisioner) Apply(ctx context.Context, cfg *config.ClusterConfig, plan
 	}
 
 	// Delete LBs that need to be deleted or recreated
+	// Collect LBs to delete and wait for them
+	type lbToDelete struct {
+		name   string
+		asgID  api.AutoScalingGroupID
+		lbID   api.LoadBalancerID
+	}
+	var lbsToWait []lbToDelete
+
 	for _, action := range plan.LBActions {
 		if action.Action == LBActionDelete || action.Action == LBActionRecreate {
 			if action.ExistingID == nil || action.ASGID == nil {
@@ -197,10 +205,22 @@ func (p *Provisioner) Apply(ctx context.Context, cfg *config.ClusterConfig, plan
 			if err != nil {
 				return wrapAPIError(err, fmt.Sprintf("failed to delete LB %s", action.Name))
 			}
+			lbsToWait = append(lbsToWait, lbToDelete{
+				name:  action.Name,
+				asgID: *action.ASGID,
+				lbID:  *action.ExistingID,
+			})
 		}
 	}
 
-	// 3. Delete ASGs that need to be deleted or recreated
+	// Wait for all LBs to be deleted
+	for _, lb := range lbsToWait {
+		if err := p.waitForLBDeletion(ctx, clusterID, lb.asgID, lb.lbID, lb.name); err != nil {
+			return fmt.Errorf("failed waiting for LB deletion: %w", err)
+		}
+	}
+
+	// 2. Delete ASGs that need to be deleted or recreated
 	for _, action := range plan.ASGActions {
 		if action.Action == ASGActionDelete || action.Action == ASGActionRecreate {
 			if action.ExistingID == nil {
@@ -214,6 +234,12 @@ func (p *Provisioner) Apply(ctx context.Context, cfg *config.ClusterConfig, plan
 			if err != nil {
 				return wrapAPIError(err, fmt.Sprintf("failed to delete ASG %s", action.Name))
 			}
+
+			// Wait for ASG to be deleted
+			if err := p.waitForASGDeletion(ctx, clusterID, *action.ExistingID, action.Name); err != nil {
+				return fmt.Errorf("failed waiting for ASG deletion: %w", err)
+			}
+
 			delete(asgNameToID, action.Name)
 		}
 	}

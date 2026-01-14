@@ -2,9 +2,13 @@ package provisioner
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/ogen-go/ogen/ogenerrors"
 
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/api"
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/config"
@@ -457,4 +461,40 @@ func buildCreateLBRequest(cfg config.LoadBalancerConfig) *api.CreateLoadBalancer
 	}
 
 	return req
+}
+
+// waitForLBDeletion polls until the LB is deleted or timeout
+func (p *Provisioner) waitForLBDeletion(ctx context.Context, clusterID uuid.UUID, asgID api.AutoScalingGroupID, lbID api.LoadBalancerID, lbName string) error {
+	startTime := time.Now()
+	pollInterval := 3 * time.Second
+	timeout := 5 * time.Minute
+
+	for {
+		elapsed := time.Since(startTime)
+		if elapsed > timeout {
+			return fmt.Errorf("timeout waiting for LB %s deletion after %v", lbName, elapsed)
+		}
+
+		// Try to get the LB
+		_, err := p.client.GetLoadBalancer(ctx, api.GetLoadBalancerParams{
+			ClusterID:          api.ClusterID(clusterID),
+			AutoScalingGroupID: asgID,
+			LoadBalancerID:     lbID,
+		})
+
+		if err != nil {
+			// Check if it's a 404 error (LB deleted)
+			var secErr *ogenerrors.SecurityError
+			if errors.As(err, &secErr) {
+				// Security error means we can't access it
+				return fmt.Errorf("failed to check LB status: %w", err)
+			}
+			// Assume deleted if we get an error (typically 404)
+			log.Printf("LB %s deleted (elapsed: %.1fs)", lbName, elapsed.Seconds())
+			return nil
+		}
+
+		log.Printf("Waiting for LB %s deletion... (elapsed: %.1fs)", lbName, elapsed.Seconds())
+		time.Sleep(pollInterval)
+	}
 }

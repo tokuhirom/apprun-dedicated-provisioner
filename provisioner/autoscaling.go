@@ -2,9 +2,13 @@ package provisioner
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/ogen-go/ogen/ogenerrors"
 
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/api"
 	"github.com/tokuhirom/apprun-dedicated-application-provisioner/config"
@@ -368,4 +372,39 @@ func buildCreateASGRequest(cfg config.AutoScalingGroupConfig) *api.CreateAutoSca
 	}
 
 	return req
+}
+
+// waitForASGDeletion polls until the ASG is deleted or timeout
+func (p *Provisioner) waitForASGDeletion(ctx context.Context, clusterID uuid.UUID, asgID api.AutoScalingGroupID, asgName string) error {
+	startTime := time.Now()
+	pollInterval := 3 * time.Second
+	timeout := 5 * time.Minute
+
+	for {
+		elapsed := time.Since(startTime)
+		if elapsed > timeout {
+			return fmt.Errorf("timeout waiting for ASG %s deletion after %v", asgName, elapsed)
+		}
+
+		// Try to get the ASG
+		_, err := p.client.GetAutoScalingGroup(ctx, api.GetAutoScalingGroupParams{
+			ClusterID:          api.ClusterID(clusterID),
+			AutoScalingGroupID: asgID,
+		})
+
+		if err != nil {
+			// Check if it's a 404 error (ASG deleted)
+			var secErr *ogenerrors.SecurityError
+			if errors.As(err, &secErr) {
+				// Security error means we can't access it
+				return fmt.Errorf("failed to check ASG status: %w", err)
+			}
+			// Assume deleted if we get an error (typically 404)
+			log.Printf("ASG %s deleted (elapsed: %.1fs)", asgName, elapsed.Seconds())
+			return nil
+		}
+
+		log.Printf("Waiting for ASG %s deletion... (elapsed: %.1fs)", asgName, elapsed.Seconds())
+		time.Sleep(pollInterval)
+	}
 }
