@@ -26,6 +26,15 @@ func Load(path string) (*ClusterConfig, error) {
 	return &config, nil
 }
 
+// ToYAML serializes the configuration to YAML format
+func (c *ClusterConfig) ToYAML() (string, error) {
+	data, err := yaml.Marshal(c)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal config: %w", err)
+	}
+	return string(data), nil
+}
+
 // validate checks if the configuration is valid
 func validate(config *ClusterConfig) error {
 	if config.ClusterName == "" {

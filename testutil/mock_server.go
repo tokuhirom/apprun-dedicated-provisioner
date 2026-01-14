@@ -122,6 +122,70 @@ func (m *MockServer) ListClusters(ctx context.Context, params api.ListClustersPa
 	}, nil
 }
 
+// GetCluster returns the details of a specific cluster.
+func (m *MockServer) GetCluster(ctx context.Context, params api.GetClusterParams) (*api.GetClusterResponse, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	cluster, exists := m.clusters[params.ClusterID]
+	if !exists {
+		return nil, fmt.Errorf("cluster %s not found", uuid.UUID(params.ClusterID).String())
+	}
+
+	return &api.GetClusterResponse{
+		Cluster: cluster,
+	}, nil
+}
+
+// UpdateCluster updates cluster settings.
+func (m *MockServer) UpdateCluster(ctx context.Context, req *api.UpdateCluster, params api.UpdateClusterParams) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	cluster, exists := m.clusters[params.ClusterID]
+	if !exists {
+		return fmt.Errorf("cluster %s not found", uuid.UUID(params.ClusterID).String())
+	}
+
+	cluster.ServicePrincipalID = req.ServicePrincipalID
+	cluster.HasLetsEncryptEmail = req.LetsEncryptEmail.IsSet()
+	m.clusters[params.ClusterID] = cluster
+
+	return nil
+}
+
+// =============================================================================
+// AutoScalingGroup APIs
+// =============================================================================
+
+// ListAutoScalingGroups returns a list of all ASGs for a cluster.
+func (m *MockServer) ListAutoScalingGroups(ctx context.Context, params api.ListAutoScalingGroupsParams) (*api.ListAutoScalingGroupResponse, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Return empty list by default (ASGs are managed separately)
+	return &api.ListAutoScalingGroupResponse{
+		AutoScalingGroups: []api.ReadAutoScalingGroupDetail{},
+		NextCursor:        api.OptAutoScalingGroupID{},
+	}, nil
+}
+
+// =============================================================================
+// LoadBalancer APIs
+// =============================================================================
+
+// ListLoadBalancers returns a list of all LBs for an ASG.
+func (m *MockServer) ListLoadBalancers(ctx context.Context, params api.ListLoadBalancersParams) (*api.ListLoadBalancersResponse, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Return empty list by default (LBs are managed separately)
+	return &api.ListLoadBalancersResponse{
+		LoadBalancers: []api.ReadLoadBalancerSummary{},
+		NextCursor:    api.OptLoadBalancerID{},
+	}, nil
+}
+
 // =============================================================================
 // Application APIs
 // =============================================================================

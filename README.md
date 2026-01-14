@@ -8,6 +8,7 @@
 - **plan/apply**: Terraform 風の2段階操作で安全に変更を適用
 - **設定の継承**: YAML で指定していない項目は既存バージョンの設定を自動的に引き継ぎ
 - **image の分離**: コンテナイメージは既存バージョンから継承（CI/CD でのデプロイと設定管理を分離）
+- **インフラ管理**: クラスタ設定、AutoScalingGroup、LoadBalancer も YAML で管理可能
 
 ## インストール
 
@@ -184,6 +185,43 @@ apprun-dedicated-application-provisioner activate -c apprun.yaml -a webapp -t 2
 | `--app`, `-a` | アプリケーション名（必須） |
 | `--target`, `-t` | アクティブ化するバージョン（デフォルト: 最新バージョン） |
 
+### 現在の設定をダンプ (dump)
+
+```bash
+apprun-dedicated-application-provisioner dump my-cluster
+```
+
+指定したクラスタの現在の設定を YAML 形式で出力します。既存環境の設定を取り込む際や、設定のバックアップに使用できます。
+
+出力例:
+```yaml
+clusterName: my-cluster
+cluster:
+  servicePrincipalId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+autoScalingGroups:
+  - name: web-asg
+    zone: is1a
+    workerServiceClassPath: cloud/plan/ssd/1core-2gb
+    minNodes: 2
+    maxNodes: 10
+    ...
+loadBalancers:
+  - name: web-lb
+    autoScalingGroupName: web-asg
+    serviceClassPath: cloud/plan/ssd/1core-2gb
+    ...
+applications:
+  - name: webapp
+    spec:
+      cpu: 1000
+      memory: 2048
+      ...
+```
+
+**注意**:
+- `letsEncryptEmail` は API から値を取得できないため、出力されません（設定の有無のみ確認可能）
+- `registryPassword` や `secret: true` の環境変数の値は出力されません
+
 ## 設定ファイル
 
 ### 基本構造
@@ -191,6 +229,38 @@ apprun-dedicated-application-provisioner activate -c apprun.yaml -a webapp -t 2
 ```yaml
 clusterName: "my-cluster"
 
+# クラスタ設定（オプション）
+cluster:
+  letsEncryptEmail: "admin@example.com"
+  servicePrincipalId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# AutoScalingGroup 設定（オプション）
+autoScalingGroups:
+  - name: "web-asg"
+    zone: "is1a"
+    workerServiceClassPath: "cloud/plan/ssd/1core-2gb"
+    minNodes: 2
+    maxNodes: 10
+    nameServers:
+      - "133.242.0.3"
+      - "133.242.0.4"
+    interfaces:
+      - interfaceIndex: 0
+        upstream: "shared"
+        connectsToLB: true
+
+# LoadBalancer 設定（オプション）
+loadBalancers:
+  - name: "web-lb"
+    autoScalingGroupName: "web-asg"
+    serviceClassPath: "cloud/plan/ssd/1core-2gb"
+    nameServers:
+      - "133.242.0.3"
+    interfaces:
+      - interfaceIndex: 0
+        upstream: "shared"
+
+# アプリケーション設定
 applications:
   - name: "webapp"
     spec:
@@ -225,7 +295,43 @@ applications:
 | 項目 | 必須 | 説明 |
 |------|------|------|
 | `clusterName` | Yes | デプロイ先クラスタの名前 |
+| `cluster` | No | クラスタ設定（既存クラスタの更新用） |
+| `autoScalingGroups` | No | AutoScalingGroup 設定の配列 |
+| `loadBalancers` | No | LoadBalancer 設定の配列 |
 | `applications` | Yes | アプリケーション設定の配列 |
+
+#### クラスタ設定 (cluster)
+
+| 項目 | 必須 | 説明 |
+|------|------|------|
+| `letsEncryptEmail` | No | Let's Encrypt 用のメールアドレス |
+| `servicePrincipalId` | Yes | サービスプリンシパル ID |
+
+#### AutoScalingGroup 設定 (autoScalingGroups)
+
+| 項目 | 必須 | 説明 |
+|------|------|------|
+| `name` | Yes | ASG 名（クラスタ内でユニーク） |
+| `zone` | Yes | ゾーン（例: "is1a"） |
+| `workerServiceClassPath` | Yes | ワーカーのサービスクラスパス |
+| `minNodes` | Yes | 最小ノード数 |
+| `maxNodes` | Yes | 最大ノード数 |
+| `nameServers` | Yes | DNS サーバーのリスト |
+| `interfaces` | Yes | ネットワークインターフェース設定 |
+
+**注意**: ASG は更新をサポートしていません。設定を変更する場合は、削除して再作成されます。
+
+#### LoadBalancer 設定 (loadBalancers)
+
+| 項目 | 必須 | 説明 |
+|------|------|------|
+| `name` | Yes | LB 名（ASG 内でユニーク） |
+| `autoScalingGroupName` | Yes | 所属する ASG の名前 |
+| `serviceClassPath` | Yes | サービスクラスパス |
+| `nameServers` | Yes | DNS サーバーのリスト |
+| `interfaces` | Yes | ネットワークインターフェース設定 |
+
+**注意**: LB は更新をサポートしていません。設定を変更する場合は、削除して再作成されます。LB は ASG に依存しているため、ASG を削除する前に LB が削除されます。
 
 #### アプリケーション設定
 
