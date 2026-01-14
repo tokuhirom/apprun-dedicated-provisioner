@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.24](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.23...v0.0.24) - 2026-01-14
+- fix: increase deletion timeout from 5 to 10 minutes by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/52
+
 ## [v0.0.23](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.22...v0.0.23) - 2026-01-14
 - feat: add infrastructure provisioning support (ASG, LB, Cluster) and dump command by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/49
 
