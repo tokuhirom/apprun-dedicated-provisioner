@@ -12,6 +12,20 @@
       "description": "Target cluster name",
       "minLength": 1
     },
+    "autoScalingGroups": {
+      "type": "array",
+      "description": "List of auto scaling group configurations",
+      "items": {
+        "$ref": "#/$defs/autoScalingGroup"
+      }
+    },
+    "loadBalancers": {
+      "type": "array",
+      "description": "List of load balancer configurations",
+      "items": {
+        "$ref": "#/$defs/loadBalancer"
+      }
+    },
     "applications": {
       "type": "array",
       "description": "List of application configurations",
@@ -22,6 +36,192 @@
     }
   },
   "$defs": {
+    "autoScalingGroup": {
+      "type": "object",
+      "description": "Auto scaling group configuration (cannot be updated, changes require delete and recreate)",
+      "required": ["name", "zone", "workerServiceClassPath", "minNodes", "maxNodes", "nameServers", "interfaces"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "ASG name (must be unique within cluster)",
+          "minLength": 1
+        },
+        "zone": {
+          "type": "string",
+          "description": "Zone where the ASG is created (e.g., 'is1a')"
+        },
+        "workerServiceClassPath": {
+          "type": "string",
+          "description": "Service class path for workers"
+        },
+        "minNodes": {
+          "type": "integer",
+          "description": "Minimum number of nodes",
+          "minimum": 0
+        },
+        "maxNodes": {
+          "type": "integer",
+          "description": "Maximum number of nodes",
+          "minimum": 1
+        },
+        "nameServers": {
+          "type": "array",
+          "description": "List of DNS servers",
+          "items": {
+            "type": "string"
+          }
+        },
+        "interfaces": {
+          "type": "array",
+          "description": "List of network interfaces",
+          "items": {
+            "$ref": "#/$defs/asgInterface"
+          }
+        }
+      }
+    },
+    "asgInterface": {
+      "type": "object",
+      "description": "Network interface configuration for ASG",
+      "required": ["interfaceIndex", "upstream"],
+      "additionalProperties": false,
+      "properties": {
+        "interfaceIndex": {
+          "type": "integer",
+          "description": "Interface number (0=eth0, 1=eth1, etc.)",
+          "minimum": 0
+        },
+        "upstream": {
+          "type": "string",
+          "description": "'shared' for shared segment, or switch/router ID"
+        },
+        "ipPool": {
+          "type": "array",
+          "description": "IP address pool (required unless upstream is 'shared')",
+          "items": {
+            "$ref": "#/$defs/ipRange"
+          }
+        },
+        "netmaskLen": {
+          "type": "integer",
+          "description": "Netmask length (required unless upstream is 'shared')",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "defaultGateway": {
+          "type": "string",
+          "description": "Default gateway IP address"
+        },
+        "packetFilterId": {
+          "type": "string",
+          "description": "Packet filter ID"
+        },
+        "connectsToLB": {
+          "type": "boolean",
+          "description": "Whether this interface connects to load balancer"
+        }
+      }
+    },
+    "loadBalancer": {
+      "type": "object",
+      "description": "Load balancer configuration (cannot be updated, changes require delete and recreate)",
+      "required": ["name", "autoScalingGroupName", "serviceClassPath", "nameServers", "interfaces"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Load balancer name",
+          "minLength": 1
+        },
+        "autoScalingGroupName": {
+          "type": "string",
+          "description": "Name of the ASG this LB belongs to"
+        },
+        "serviceClassPath": {
+          "type": "string",
+          "description": "Service class path"
+        },
+        "nameServers": {
+          "type": "array",
+          "description": "List of DNS servers",
+          "items": {
+            "type": "string"
+          }
+        },
+        "interfaces": {
+          "type": "array",
+          "description": "List of network interfaces",
+          "items": {
+            "$ref": "#/$defs/lbInterface"
+          }
+        }
+      }
+    },
+    "lbInterface": {
+      "type": "object",
+      "description": "Network interface configuration for LoadBalancer",
+      "required": ["interfaceIndex", "upstream"],
+      "additionalProperties": false,
+      "properties": {
+        "interfaceIndex": {
+          "type": "integer",
+          "description": "Interface number",
+          "minimum": 0
+        },
+        "upstream": {
+          "type": "string",
+          "description": "'shared' for shared segment, or switch/router ID"
+        },
+        "ipPool": {
+          "type": "array",
+          "description": "IP address pool (required unless upstream is 'shared')",
+          "items": {
+            "$ref": "#/$defs/ipRange"
+          }
+        },
+        "netmaskLen": {
+          "type": "integer",
+          "description": "Netmask length (required unless upstream is 'shared')",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "defaultGateway": {
+          "type": "string",
+          "description": "Default gateway IP address"
+        },
+        "vip": {
+          "type": "string",
+          "description": "Virtual IP address"
+        },
+        "virtualRouterId": {
+          "type": "integer",
+          "description": "VRRP virtual router ID (required if vip is set)",
+          "minimum": 1,
+          "maximum": 255
+        },
+        "packetFilterId": {
+          "type": "string",
+          "description": "Packet filter ID"
+        }
+      }
+    },
+    "ipRange": {
+      "type": "object",
+      "description": "IP address range",
+      "required": ["start", "end"],
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "type": "string",
+          "description": "Start IP address"
+        },
+        "end": {
+          "type": "string",
+          "description": "End IP address"
+        }
+      }
+    },
     "application": {
       "type": "object",
       "description": "Application configuration",

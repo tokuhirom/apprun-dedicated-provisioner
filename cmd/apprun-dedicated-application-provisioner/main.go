@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/alecthomas/kong"
 
@@ -28,6 +30,7 @@ type CLI struct {
 	Versions VersionsCmd `cmd:"" help:"List application versions"`
 	Diff     DiffCmd     `cmd:"" help:"Show diff between two versions"`
 	Activate ActivateCmd `cmd:"" help:"Activate a version"`
+	Dump     DumpCmd     `cmd:"" help:"Dump current cluster configuration as YAML"`
 }
 
 type VersionFlag bool
@@ -43,7 +46,8 @@ func (v VersionFlag) BeforeApply() error {
 type PlanCmd struct{}
 
 type ApplyCmd struct {
-	Activate bool `help:"Activate the created/updated version after apply"`
+	Activate    bool `help:"Activate the created/updated version after apply"`
+	AutoApprove bool `short:"y" name:"auto-approve" help:"Skip interactive approval of plan before applying"`
 }
 
 type VersionsCmd struct {
@@ -59,6 +63,10 @@ type DiffCmd struct {
 type ActivateCmd struct {
 	App           string `short:"a" help:"Application name" required:""`
 	TargetVersion int    `name:"target" short:"t" help:"Version to activate (default: latest)" default:"0"`
+}
+
+type DumpCmd struct {
+	ClusterName string `arg:"" help:"Cluster name to dump"`
 }
 
 func main() {
@@ -120,6 +128,24 @@ func (c *ApplyCmd) Run(cli *CLI) error {
 	printPlan(plan)
 
 	hasChanges := false
+
+	// Check for ASG changes (skip doesn't count as a change)
+	for _, action := range plan.ASGActions {
+		if action.Action != provisioner.ASGActionNoop && action.Action != provisioner.ASGActionSkip {
+			hasChanges = true
+			break
+		}
+	}
+
+	// Check for LB changes (skip doesn't count as a change)
+	for _, action := range plan.LBActions {
+		if action.Action != provisioner.LBActionNoop && action.Action != provisioner.LBActionSkip {
+			hasChanges = true
+			break
+		}
+	}
+
+	// Check for Application changes
 	for _, action := range plan.Actions {
 		if action.Action != provisioner.ActionNoop {
 			hasChanges = true
@@ -130,6 +156,21 @@ func (c *ApplyCmd) Run(cli *CLI) error {
 	if !hasChanges {
 		fmt.Println("\nNo changes to apply.")
 		return nil
+	}
+
+	// Prompt for confirmation unless --auto-approve is set
+	if !c.AutoApprove {
+		fmt.Print("\nDo you want to apply these changes? [y/N]: ")
+		reader := bufio.NewReader(os.Stdin)
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("failed to read input: %w", err)
+		}
+		input = strings.TrimSpace(strings.ToLower(input))
+		if input != "y" && input != "yes" {
+			fmt.Println("Apply canceled.")
+			return nil
+		}
 	}
 
 	fmt.Println("\nApplying changes...")
@@ -217,6 +258,28 @@ func (c *ActivateCmd) Run(cli *CLI) error {
 	return nil
 }
 
+func (c *DumpCmd) Run(cli *CLI) error {
+	p, err := createProvisionerSimple()
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	clusterConfig, err := p.DumpClusterConfig(ctx, c.ClusterName)
+	if err != nil {
+		return fmt.Errorf("failed to dump cluster config: %w", err)
+	}
+
+	// Output as YAML
+	yamlOutput, err := clusterConfig.ToYAML()
+	if err != nil {
+		return fmt.Errorf("failed to serialize config: %w", err)
+	}
+
+	fmt.Print(yamlOutput)
+	return nil
+}
+
 func createProvisioner(configPath string) (*provisioner.Provisioner, error) {
 	accessToken := getEnvWithFallback("SAKURA_ACCESS_TOKEN", "SAKURACLOUD_ACCESS_TOKEN")
 	accessTokenSecret := getEnvWithFallback("SAKURA_ACCESS_TOKEN_SECRET", "SAKURACLOUD_ACCESS_TOKEN_SECRET")
@@ -253,6 +316,84 @@ func loadConfig(path string) (*config.ClusterConfig, error) {
 func printPlan(plan *provisioner.Plan) {
 	fmt.Printf("Cluster: %s (%s)\n\n", plan.ClusterName, plan.ClusterID)
 
+	// Print ASG changes
+	asgHasChanges := false
+	for _, action := range plan.ASGActions {
+		if action.Action != provisioner.ASGActionNoop && action.Action != provisioner.ASGActionSkip {
+			asgHasChanges = true
+			break
+		}
+	}
+	if asgHasChanges || len(plan.ASGActions) > 0 {
+		fmt.Println("=== Auto Scaling Groups ===")
+		for _, action := range plan.ASGActions {
+			switch action.Action {
+			case provisioner.ASGActionCreate:
+				fmt.Printf("+ %s (create)\n", action.Name)
+				for _, change := range action.Changes {
+					fmt.Printf("    %s\n", change)
+				}
+			case provisioner.ASGActionDelete:
+				fmt.Printf("- %s (delete)\n", action.Name)
+			case provisioner.ASGActionRecreate:
+				fmt.Printf("~ %s (recreate - settings changed)\n", action.Name)
+				for _, change := range action.Changes {
+					fmt.Printf("    %s\n", change)
+				}
+			case provisioner.ASGActionSkip:
+				fmt.Printf("  %s (not in YAML, skipping)\n", action.Name)
+			case provisioner.ASGActionNoop:
+				fmt.Printf("  %s (no changes)\n", action.Name)
+			}
+		}
+		fmt.Println()
+	}
+
+	// Print LB changes
+	lbHasChanges := false
+	for _, action := range plan.LBActions {
+		if action.Action != provisioner.LBActionNoop && action.Action != provisioner.LBActionSkip {
+			lbHasChanges = true
+			break
+		}
+	}
+	if lbHasChanges || len(plan.LBActions) > 0 {
+		fmt.Println("=== Load Balancers ===")
+		for _, action := range plan.LBActions {
+			switch action.Action {
+			case provisioner.LBActionCreate:
+				fmt.Printf("+ %s (create, ASG: %s)\n", action.Name, action.ASGName)
+				for _, change := range action.Changes {
+					fmt.Printf("    %s\n", change)
+				}
+			case provisioner.LBActionDelete:
+				fmt.Printf("- %s (delete, ASG: %s)\n", action.Name, action.ASGName)
+			case provisioner.LBActionRecreate:
+				fmt.Printf("~ %s (recreate, ASG: %s - settings changed)\n", action.Name, action.ASGName)
+				for _, change := range action.Changes {
+					fmt.Printf("    %s\n", change)
+				}
+			case provisioner.LBActionSkip:
+				fmt.Printf("  %s (not in YAML, skipping, ASG: %s)\n", action.Name, action.ASGName)
+			case provisioner.LBActionNoop:
+				fmt.Printf("  %s (no changes, ASG: %s)\n", action.Name, action.ASGName)
+			}
+		}
+		fmt.Println()
+	}
+
+	// Print Application changes
+	appHasChanges := false
+	for _, action := range plan.Actions {
+		if action.Action != provisioner.ActionNoop {
+			appHasChanges = true
+			break
+		}
+	}
+	if appHasChanges || len(plan.Actions) > 0 {
+		fmt.Println("=== Applications ===")
+	}
+
 	createCount := 0
 	updateCount := 0
 	noopCount := 0
@@ -277,7 +418,39 @@ func printPlan(plan *provisioner.Plan) {
 		}
 	}
 
-	fmt.Printf("\nPlan: %d to create, %d to update, %d unchanged.\n", createCount, updateCount, noopCount)
+	// Count infrastructure changes
+	asgCreateCount, asgDeleteCount, asgRecreateCount := 0, 0, 0
+	for _, action := range plan.ASGActions {
+		switch action.Action {
+		case provisioner.ASGActionCreate:
+			asgCreateCount++
+		case provisioner.ASGActionDelete:
+			asgDeleteCount++
+		case provisioner.ASGActionRecreate:
+			asgRecreateCount++
+		}
+	}
+
+	lbCreateCount, lbDeleteCount, lbRecreateCount := 0, 0, 0
+	for _, action := range plan.LBActions {
+		switch action.Action {
+		case provisioner.LBActionCreate:
+			lbCreateCount++
+		case provisioner.LBActionDelete:
+			lbDeleteCount++
+		case provisioner.LBActionRecreate:
+			lbRecreateCount++
+		}
+	}
+
+	fmt.Printf("\nPlan Summary:\n")
+	if asgCreateCount+asgDeleteCount+asgRecreateCount > 0 {
+		fmt.Printf("  ASG: %d to create, %d to delete, %d to recreate\n", asgCreateCount, asgDeleteCount, asgRecreateCount)
+	}
+	if lbCreateCount+lbDeleteCount+lbRecreateCount > 0 {
+		fmt.Printf("  LB: %d to create, %d to delete, %d to recreate\n", lbCreateCount, lbDeleteCount, lbRecreateCount)
+	}
+	fmt.Printf("  Applications: %d to create, %d to update, %d unchanged\n", createCount, updateCount, noopCount)
 }
 
 // getEnvWithFallback returns the value of the first environment variable that is set

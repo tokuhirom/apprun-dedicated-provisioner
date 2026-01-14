@@ -4,8 +4,92 @@ package config
 type ClusterConfig struct {
 	// ClusterName is the target cluster name
 	ClusterName string `yaml:"clusterName"`
+	// AutoScalingGroups is a list of auto scaling group configurations
+	AutoScalingGroups []AutoScalingGroupConfig `yaml:"autoScalingGroups,omitempty"`
+	// LoadBalancers is a list of load balancer configurations
+	LoadBalancers []LoadBalancerConfig `yaml:"loadBalancers,omitempty"`
 	// Applications is a list of application configurations
 	Applications []ApplicationConfig `yaml:"applications"`
+}
+
+// AutoScalingGroupConfig represents an auto scaling group configuration
+// Note: ASG settings cannot be updated. Changes require delete and recreate.
+type AutoScalingGroupConfig struct {
+	// Name is the ASG name (must be unique within cluster)
+	Name string `yaml:"name"`
+	// Zone is the zone where the ASG is created (e.g., "is1a")
+	Zone string `yaml:"zone"`
+	// WorkerServiceClassPath is the service class path for workers
+	WorkerServiceClassPath string `yaml:"workerServiceClassPath"`
+	// MinNodes is the minimum number of nodes
+	MinNodes int32 `yaml:"minNodes"`
+	// MaxNodes is the maximum number of nodes
+	MaxNodes int32 `yaml:"maxNodes"`
+	// NameServers is the list of DNS servers
+	NameServers []string `yaml:"nameServers"`
+	// Interfaces is the list of network interfaces
+	Interfaces []ASGInterfaceConfig `yaml:"interfaces"`
+}
+
+// ASGInterfaceConfig represents a network interface configuration for ASG
+type ASGInterfaceConfig struct {
+	// InterfaceIndex is the interface number (0=eth0, 1=eth1, etc.)
+	InterfaceIndex int16 `yaml:"interfaceIndex"`
+	// Upstream is "shared" for shared segment, or switch/router ID
+	Upstream string `yaml:"upstream"`
+	// IpPool is the IP address pool (required unless upstream is "shared")
+	IpPool []IpRangeConfig `yaml:"ipPool,omitempty"`
+	// NetmaskLen is the netmask length (required unless upstream is "shared")
+	NetmaskLen *int16 `yaml:"netmaskLen,omitempty"`
+	// DefaultGateway is the default gateway
+	DefaultGateway *string `yaml:"defaultGateway,omitempty"`
+	// PacketFilterID is the packet filter ID
+	PacketFilterID *string `yaml:"packetFilterId,omitempty"`
+	// ConnectsToLB indicates if this interface connects to load balancer
+	ConnectsToLB bool `yaml:"connectsToLB"`
+}
+
+// IpRangeConfig represents an IP address range
+type IpRangeConfig struct {
+	// Start is the start IP address
+	Start string `yaml:"start"`
+	// End is the end IP address
+	End string `yaml:"end"`
+}
+
+// LoadBalancerConfig represents a load balancer configuration
+// Note: LB settings cannot be updated. Changes require delete and recreate.
+type LoadBalancerConfig struct {
+	// Name is the load balancer name
+	Name string `yaml:"name"`
+	// AutoScalingGroupName is the name of the ASG this LB belongs to
+	AutoScalingGroupName string `yaml:"autoScalingGroupName"`
+	// ServiceClassPath is the service class path
+	ServiceClassPath string `yaml:"serviceClassPath"`
+	// NameServers is the list of DNS servers
+	NameServers []string `yaml:"nameServers"`
+	// Interfaces is the list of network interfaces
+	Interfaces []LBInterfaceConfig `yaml:"interfaces"`
+}
+
+// LBInterfaceConfig represents a network interface configuration for LoadBalancer
+type LBInterfaceConfig struct {
+	// InterfaceIndex is the interface number
+	InterfaceIndex int16 `yaml:"interfaceIndex"`
+	// Upstream is "shared" for shared segment, or switch/router ID
+	Upstream string `yaml:"upstream"`
+	// IpPool is the IP address pool (required unless upstream is "shared")
+	IpPool []IpRangeConfig `yaml:"ipPool,omitempty"`
+	// NetmaskLen is the netmask length (required unless upstream is "shared")
+	NetmaskLen *int16 `yaml:"netmaskLen,omitempty"`
+	// DefaultGateway is the default gateway
+	DefaultGateway *string `yaml:"defaultGateway,omitempty"`
+	// Vip is the virtual IP address
+	Vip *string `yaml:"vip,omitempty"`
+	// VirtualRouterID is the VRRP virtual router ID (1-255, required if vip is set)
+	VirtualRouterID *int16 `yaml:"virtualRouterId,omitempty"`
+	// PacketFilterID is the packet filter ID
+	PacketFilterID *string `yaml:"packetFilterId,omitempty"`
 }
 
 // ApplicationConfig represents an application configuration

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 
@@ -24,6 +25,17 @@ func Load(path string) (*ClusterConfig, error) {
 	}
 
 	return &config, nil
+}
+
+// ToYAML serializes the configuration to YAML format with 2-space indentation
+func (c *ClusterConfig) ToYAML() (string, error) {
+	var buf bytes.Buffer
+	encoder := yaml.NewEncoder(&buf)
+	encoder.SetIndent(2)
+	if err := encoder.Encode(c); err != nil {
+		return "", fmt.Errorf("failed to marshal config: %w", err)
+	}
+	return buf.String(), nil
 }
 
 // validate checks if the configuration is valid
@@ -67,11 +79,12 @@ func validateApplication(app *ApplicationConfig, index int) error {
 	}
 
 	// Validate scaling parameters
-	if v.ScalingMode == "manual" {
+	switch v.ScalingMode {
+	case "manual":
 		if v.FixedScale == nil {
 			return fmt.Errorf("applications[%d]: fixedScale is required when scalingMode is 'manual'", index)
 		}
-	} else if v.ScalingMode == "cpu" {
+	case "cpu":
 		if v.MinScale == nil || v.MaxScale == nil {
 			return fmt.Errorf("applications[%d]: minScale and maxScale are required when scalingMode is 'cpu'", index)
 		}

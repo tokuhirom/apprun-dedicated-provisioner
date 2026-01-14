@@ -35,7 +35,11 @@ type PlannedAction struct {
 type Plan struct {
 	ClusterName string
 	ClusterID   uuid.UUID
-	Actions     []PlannedAction
+	// Infrastructure actions
+	ASGActions []ASGAction
+	LBActions  []LBAction
+	// Application actions
+	Actions []PlannedAction
 }
 
 // ApplyOptions contains options for the Apply operation
@@ -102,6 +106,26 @@ func (p *Provisioner) CreatePlan(ctx context.Context, cfg *config.ClusterConfig)
 		ClusterID:   clusterID,
 	}
 
+	// Get current ASGs for planning
+	currentASGs, err := p.listAllASGs(ctx, clusterID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list ASGs: %w", err)
+	}
+
+	// Plan ASG changes
+	asgActions, err := p.planASGChanges(ctx, clusterID, cfg.AutoScalingGroups)
+	if err != nil {
+		return nil, fmt.Errorf("failed to plan ASG changes: %w", err)
+	}
+	plan.ASGActions = asgActions
+
+	// Plan LB changes (pass ASG actions to handle ASG recreate scenario)
+	lbActions, err := p.planLBChanges(ctx, clusterID, cfg.LoadBalancers, currentASGs, asgActions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to plan LB changes: %w", err)
+	}
+	plan.LBActions = lbActions
+
 	// Get existing applications
 	existing, err := p.listAllApplications(ctx, clusterID)
 	if err != nil {
@@ -147,7 +171,139 @@ func (p *Provisioner) Apply(ctx context.Context, cfg *config.ClusterConfig, plan
 	// Use cluster ID from the plan (already resolved)
 	clusterID := plan.ClusterID
 
-	// Get existing applications for lookup
+	// 1. Delete LBs first (before deleting ASGs, since ASG has-a LB)
+	// Build current ASG name->ID map for LB operations
+	currentASGs, err := p.listAllASGs(ctx, clusterID)
+	if err != nil {
+		return fmt.Errorf("failed to list ASGs: %w", err)
+	}
+	asgNameToID := make(map[string]api.AutoScalingGroupID)
+	for _, asg := range currentASGs {
+		asgNameToID[asg.Name] = asg.AutoScalingGroupID
+	}
+
+	// Delete LBs that need to be deleted or recreated
+	// Collect LBs to delete and wait for them
+	type lbToDelete struct {
+		name  string
+		asgID api.AutoScalingGroupID
+		lbID  api.LoadBalancerID
+	}
+	var lbsToWait []lbToDelete
+
+	for _, action := range plan.LBActions {
+		if action.Action == LBActionDelete || action.Action == LBActionRecreate {
+			if action.ExistingID == nil || action.ASGID == nil {
+				return fmt.Errorf("cannot delete LB %s: missing ID", action.Name)
+			}
+			log.Printf("Deleting LB: %s (ASG: %s)", action.Name, action.ASGName)
+			err := p.client.DeleteLoadBalancer(ctx, api.DeleteLoadBalancerParams{
+				ClusterID:          api.ClusterID(clusterID),
+				AutoScalingGroupID: *action.ASGID,
+				LoadBalancerID:     *action.ExistingID,
+			})
+			if err != nil {
+				return wrapAPIError(err, fmt.Sprintf("failed to delete LB %s", action.Name))
+			}
+			lbsToWait = append(lbsToWait, lbToDelete{
+				name:  action.Name,
+				asgID: *action.ASGID,
+				lbID:  *action.ExistingID,
+			})
+		}
+	}
+
+	// Wait for all LBs to be deleted
+	for _, lb := range lbsToWait {
+		if err := p.waitForLBDeletion(ctx, clusterID, lb.asgID, lb.lbID, lb.name); err != nil {
+			return fmt.Errorf("failed waiting for LB deletion: %w", err)
+		}
+	}
+
+	// 2. Delete ASGs that need to be deleted or recreated
+	for _, action := range plan.ASGActions {
+		if action.Action == ASGActionDelete || action.Action == ASGActionRecreate {
+			if action.ExistingID == nil {
+				return fmt.Errorf("cannot delete ASG %s: missing ID", action.Name)
+			}
+			log.Printf("Deleting ASG: %s", action.Name)
+			err := p.client.DeleteAutoScalingGroup(ctx, api.DeleteAutoScalingGroupParams{
+				ClusterID:          api.ClusterID(clusterID),
+				AutoScalingGroupID: *action.ExistingID,
+			})
+			if err != nil {
+				return wrapAPIError(err, fmt.Sprintf("failed to delete ASG %s", action.Name))
+			}
+
+			// Wait for ASG to be deleted
+			if err := p.waitForASGDeletion(ctx, clusterID, *action.ExistingID, action.Name); err != nil {
+				return fmt.Errorf("failed waiting for ASG deletion: %w", err)
+			}
+
+			delete(asgNameToID, action.Name)
+		}
+	}
+
+	// 4. Create ASGs that need to be created or recreated
+	for _, action := range plan.ASGActions {
+		if action.Action == ASGActionCreate || action.Action == ASGActionRecreate {
+			// Find the config for this ASG
+			var asgCfg *config.AutoScalingGroupConfig
+			for i := range cfg.AutoScalingGroups {
+				if cfg.AutoScalingGroups[i].Name == action.Name {
+					asgCfg = &cfg.AutoScalingGroups[i]
+					break
+				}
+			}
+			if asgCfg == nil {
+				return fmt.Errorf("cannot create ASG %s: config not found", action.Name)
+			}
+
+			log.Printf("Creating ASG: %s", action.Name)
+			req := buildCreateASGRequest(*asgCfg)
+			resp, err := p.client.CreateAutoScalingGroup(ctx, req, api.CreateAutoScalingGroupParams{
+				ClusterID: api.ClusterID(clusterID),
+			})
+			if err != nil {
+				return wrapAPIError(err, fmt.Sprintf("failed to create ASG %s", action.Name))
+			}
+			asgNameToID[action.Name] = resp.AutoScalingGroup.AutoScalingGroupID
+		}
+	}
+
+	// 5. Create LBs that need to be created or recreated
+	for _, action := range plan.LBActions {
+		if action.Action == LBActionCreate || action.Action == LBActionRecreate {
+			// Find the config for this LB
+			var lbCfg *config.LoadBalancerConfig
+			for i := range cfg.LoadBalancers {
+				if cfg.LoadBalancers[i].Name == action.Name && cfg.LoadBalancers[i].AutoScalingGroupName == action.ASGName {
+					lbCfg = &cfg.LoadBalancers[i]
+					break
+				}
+			}
+			if lbCfg == nil {
+				return fmt.Errorf("cannot create LB %s: config not found", action.Name)
+			}
+
+			asgID, ok := asgNameToID[action.ASGName]
+			if !ok {
+				return fmt.Errorf("cannot create LB %s: ASG %s not found", action.Name, action.ASGName)
+			}
+
+			log.Printf("Creating LB: %s (ASG: %s)", action.Name, action.ASGName)
+			req := buildCreateLBRequest(*lbCfg)
+			_, err := p.client.CreateLoadBalancer(ctx, req, api.CreateLoadBalancerParams{
+				ClusterID:          api.ClusterID(clusterID),
+				AutoScalingGroupID: asgID,
+			})
+			if err != nil {
+				return wrapAPIError(err, fmt.Sprintf("failed to create LB %s", action.Name))
+			}
+		}
+	}
+
+	// 6. Apply Application changes
 	existing, err := p.listAllApplications(ctx, clusterID)
 	if err != nil {
 		return wrapAPIError(err, "failed to list applications")
@@ -1013,4 +1169,212 @@ func (p *Provisioner) findApplicationByName(ctx context.Context, clusterID uuid.
 	}
 
 	return nil, fmt.Errorf("application %q not found in cluster", appName)
+}
+
+// DumpClusterConfig dumps the current cluster configuration
+func (p *Provisioner) DumpClusterConfig(ctx context.Context, clusterName string) (*config.ClusterConfig, error) {
+	// Resolve cluster name to ID
+	clusterID, err := p.resolveClusterID(ctx, clusterName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve cluster: %w", err)
+	}
+
+	cfg := &config.ClusterConfig{
+		ClusterName: clusterName,
+	}
+
+	// Dump ASGs
+	asgs, err := p.listAllASGs(ctx, clusterID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list ASGs: %w", err)
+	}
+
+	for _, asg := range asgs {
+		asgCfg := config.AutoScalingGroupConfig{
+			Name:                   asg.Name,
+			Zone:                   asg.Zone,
+			WorkerServiceClassPath: asg.WorkerServiceClassPath,
+			MinNodes:               asg.MinNodes,
+			MaxNodes:               asg.MaxNodes,
+		}
+
+		// Convert NameServers
+		for _, ns := range asg.NameServers {
+			asgCfg.NameServers = append(asgCfg.NameServers, string(ns))
+		}
+
+		// Convert Interfaces
+		for _, iface := range asg.Interfaces {
+			ifaceCfg := config.ASGInterfaceConfig{
+				InterfaceIndex: iface.InterfaceIndex,
+				Upstream:       iface.Upstream,
+				ConnectsToLB:   iface.ConnectsToLB,
+			}
+
+			// Convert IpPool
+			for _, ipRange := range iface.IpPool {
+				ifaceCfg.IpPool = append(ifaceCfg.IpPool, config.IpRangeConfig{
+					Start: string(ipRange.Start),
+					End:   string(ipRange.End),
+				})
+			}
+
+			if iface.NetmaskLen.Set {
+				ifaceCfg.NetmaskLen = &iface.NetmaskLen.Value
+			}
+			if iface.DefaultGateway.Set {
+				ifaceCfg.DefaultGateway = &iface.DefaultGateway.Value
+			}
+			if iface.PacketFilterID.Set {
+				ifaceCfg.PacketFilterID = &iface.PacketFilterID.Value
+			}
+
+			asgCfg.Interfaces = append(asgCfg.Interfaces, ifaceCfg)
+		}
+
+		cfg.AutoScalingGroups = append(cfg.AutoScalingGroups, asgCfg)
+
+		// Dump LBs for this ASG
+		lbs, err := p.listAllLBs(ctx, clusterID, asg.AutoScalingGroupID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list LBs for ASG %s: %w", asg.Name, err)
+		}
+
+		for _, lb := range lbs {
+			lbCfg := config.LoadBalancerConfig{
+				Name:                 lb.Name,
+				AutoScalingGroupName: asg.Name,
+				ServiceClassPath:     lb.ServiceClassPath,
+			}
+
+			// Convert NameServers
+			for _, ns := range lb.NameServers {
+				lbCfg.NameServers = append(lbCfg.NameServers, string(ns))
+			}
+
+			// Convert Interfaces
+			for _, iface := range lb.Interfaces {
+				ifaceCfg := config.LBInterfaceConfig{
+					InterfaceIndex: iface.InterfaceIndex,
+					Upstream:       iface.Upstream,
+				}
+
+				// Convert IpPool
+				for _, ipRange := range iface.IpPool {
+					ifaceCfg.IpPool = append(ifaceCfg.IpPool, config.IpRangeConfig{
+						Start: string(ipRange.Start),
+						End:   string(ipRange.End),
+					})
+				}
+
+				if iface.NetmaskLen.Set {
+					ifaceCfg.NetmaskLen = &iface.NetmaskLen.Value
+				}
+				if iface.DefaultGateway.Set {
+					ifaceCfg.DefaultGateway = &iface.DefaultGateway.Value
+				}
+				if iface.Vip.Set {
+					ifaceCfg.Vip = &iface.Vip.Value
+				}
+				if iface.VirtualRouterID.Set {
+					ifaceCfg.VirtualRouterID = &iface.VirtualRouterID.Value
+				}
+				if iface.PacketFilterID.Set {
+					ifaceCfg.PacketFilterID = &iface.PacketFilterID.Value
+				}
+
+				lbCfg.Interfaces = append(lbCfg.Interfaces, ifaceCfg)
+			}
+
+			cfg.LoadBalancers = append(cfg.LoadBalancers, lbCfg)
+		}
+	}
+
+	// Dump Applications
+	apps, err := p.listAllApplications(ctx, clusterID)
+	if err != nil {
+		return nil, wrapAPIError(err, "failed to list applications")
+	}
+
+	for _, app := range apps {
+		// Get latest version for the application
+		latestVersion, err := p.getLatestVersion(ctx, app.ApplicationID)
+		if err != nil {
+			log.Printf("Warning: failed to get latest version for app %s: %v", app.Name, err)
+			continue
+		}
+
+		appCfg := config.ApplicationConfig{
+			Name: app.Name,
+		}
+
+		if latestVersion != nil {
+			appCfg.Spec = config.ApplicationSpec{
+				CPU:         latestVersion.CPU,
+				Memory:      latestVersion.Memory,
+				ScalingMode: string(latestVersion.ScalingMode),
+				Image:       latestVersion.Image,
+				Cmd:         latestVersion.Cmd,
+			}
+
+			// Scaling parameters
+			if latestVersion.FixedScale.Set {
+				appCfg.Spec.FixedScale = &latestVersion.FixedScale.Value
+			}
+			if latestVersion.MinScale.Set {
+				appCfg.Spec.MinScale = &latestVersion.MinScale.Value
+			}
+			if latestVersion.MaxScale.Set {
+				appCfg.Spec.MaxScale = &latestVersion.MaxScale.Value
+			}
+			if latestVersion.ScaleInThreshold.Set {
+				appCfg.Spec.ScaleInThreshold = &latestVersion.ScaleInThreshold.Value
+			}
+			if latestVersion.ScaleOutThreshold.Set {
+				appCfg.Spec.ScaleOutThreshold = &latestVersion.ScaleOutThreshold.Value
+			}
+
+			// Registry credentials (only username is available)
+			if !latestVersion.RegistryUsername.IsNull() && latestVersion.RegistryUsername.Value != "" {
+				appCfg.Spec.RegistryUsername = &latestVersion.RegistryUsername.Value
+			}
+
+			// ExposedPorts
+			for _, port := range latestVersion.ExposedPorts {
+				portCfg := config.ExposedPortConfig{
+					TargetPort:     int32(port.TargetPort),
+					UseLetsEncrypt: port.UseLetsEncrypt,
+					Host:           port.Host,
+				}
+				if !port.LoadBalancerPort.IsNull() {
+					lbPort := int32(port.LoadBalancerPort.Value)
+					portCfg.LoadBalancerPort = &lbPort
+				}
+				if !port.HealthCheck.IsNull() {
+					portCfg.HealthCheck = &config.HealthCheckConfig{
+						Path:            port.HealthCheck.Value.Path,
+						IntervalSeconds: port.HealthCheck.Value.IntervalSeconds,
+						TimeoutSeconds:  port.HealthCheck.Value.TimeoutSeconds,
+					}
+				}
+				appCfg.Spec.ExposedPorts = append(appCfg.Spec.ExposedPorts, portCfg)
+			}
+
+			// Environment variables
+			for _, env := range latestVersion.Env {
+				envCfg := config.EnvVarConfig{
+					Key:    env.Key,
+					Secret: env.Secret,
+				}
+				if !env.Secret && !env.Value.IsNull() {
+					envCfg.Value = &env.Value.Value
+				}
+				appCfg.Spec.Env = append(appCfg.Spec.Env, envCfg)
+			}
+		}
+
+		cfg.Applications = append(cfg.Applications, appCfg)
+	}
+
+	return cfg, nil
 }
