@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.22](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.21...v0.0.22) - 2026-01-14
+- fix: keep tail when truncating image name by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/47
+
 ## [v0.0.21](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.20...v0.0.21) - 2026-01-13
 - refactor: use r3labs/diff library for spec comparison by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/45
 
