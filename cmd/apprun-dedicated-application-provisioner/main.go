@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/alecthomas/kong"
 
@@ -44,7 +46,8 @@ func (v VersionFlag) BeforeApply() error {
 type PlanCmd struct{}
 
 type ApplyCmd struct {
-	Activate bool `help:"Activate the created/updated version after apply"`
+	Activate    bool `help:"Activate the created/updated version after apply"`
+	AutoApprove bool `short:"y" name:"auto-approve" help:"Skip interactive approval of plan before applying"`
 }
 
 type VersionsCmd struct {
@@ -153,6 +156,21 @@ func (c *ApplyCmd) Run(cli *CLI) error {
 	if !hasChanges {
 		fmt.Println("\nNo changes to apply.")
 		return nil
+	}
+
+	// Prompt for confirmation unless --auto-approve is set
+	if !c.AutoApprove {
+		fmt.Print("\nDo you want to apply these changes? [y/N]: ")
+		reader := bufio.NewReader(os.Stdin)
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("failed to read input: %w", err)
+		}
+		input = strings.TrimSpace(strings.ToLower(input))
+		if input != "y" && input != "yes" {
+			fmt.Println("Apply cancelled.")
+			return nil
+		}
 	}
 
 	fmt.Println("\nApplying changes...")
