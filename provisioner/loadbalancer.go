@@ -33,11 +33,19 @@ type LBAction struct {
 }
 
 // planLBChanges compares current LBs with desired and returns planned changes
-func (p *Provisioner) planLBChanges(ctx context.Context, clusterID uuid.UUID, desired []config.LoadBalancerConfig, currentASGs []api.ReadAutoScalingGroupDetail) ([]LBAction, error) {
+func (p *Provisioner) planLBChanges(ctx context.Context, clusterID uuid.UUID, desired []config.LoadBalancerConfig, currentASGs []api.ReadAutoScalingGroupDetail, asgActions []ASGAction) ([]LBAction, error) {
 	// Build map of ASG names to IDs
 	asgNameToID := make(map[string]api.AutoScalingGroupID)
 	for _, asg := range currentASGs {
 		asgNameToID[asg.Name] = asg.AutoScalingGroupID
+	}
+
+	// Build map of ASGs being recreated
+	asgRecreating := make(map[string]bool)
+	for _, action := range asgActions {
+		if action.Action == ASGActionRecreate {
+			asgRecreating[action.Name] = true
+		}
 	}
 
 	// Get current LBs for all ASGs
@@ -87,9 +95,24 @@ func (p *Provisioner) planLBChanges(ctx context.Context, clusterID uuid.UUID, de
 				ASGID:   &asgID,
 			})
 		} else {
-			// LB exists, check if settings differ
+			// LB exists, check if settings differ or if parent ASG is being recreated
 			changes := compareLB(current, desiredLB)
-			if len(changes) > 0 {
+			if asgRecreating[desiredLB.AutoScalingGroupName] {
+				// Parent ASG is being recreated, LB must also be recreated
+				lbID := current.LoadBalancerID
+				recreateChanges := changes
+				if len(recreateChanges) == 0 {
+					recreateChanges = []string{"parent ASG is being recreated"}
+				}
+				actions = append(actions, LBAction{
+					Action:     LBActionRecreate,
+					Name:       desiredLB.Name,
+					ASGName:    desiredLB.AutoScalingGroupName,
+					Changes:    recreateChanges,
+					ExistingID: &lbID,
+					ASGID:      &asgID,
+				})
+			} else if len(changes) > 0 {
 				// Settings differ, need to recreate (no update API)
 				lbID := current.LoadBalancerID
 				actions = append(actions, LBAction{

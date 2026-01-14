@@ -119,8 +119,8 @@ func (p *Provisioner) CreatePlan(ctx context.Context, cfg *config.ClusterConfig)
 	}
 	plan.ASGActions = asgActions
 
-	// Plan LB changes
-	lbActions, err := p.planLBChanges(ctx, clusterID, cfg.LoadBalancers, currentASGs)
+	// Plan LB changes (pass ASG actions to handle ASG recreate scenario)
+	lbActions, err := p.planLBChanges(ctx, clusterID, cfg.LoadBalancers, currentASGs, asgActions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to plan LB changes: %w", err)
 	}
