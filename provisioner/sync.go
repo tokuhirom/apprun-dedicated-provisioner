@@ -36,9 +36,8 @@ type Plan struct {
 	ClusterName string
 	ClusterID   uuid.UUID
 	// Infrastructure actions
-	ClusterAction *ClusterAction
-	ASGActions    []ASGAction
-	LBActions     []LBAction
+	ASGActions []ASGAction
+	LBActions  []LBAction
 	// Application actions
 	Actions []PlannedAction
 }
@@ -107,13 +106,6 @@ func (p *Provisioner) CreatePlan(ctx context.Context, cfg *config.ClusterConfig)
 		ClusterID:   clusterID,
 	}
 
-	// Plan Cluster settings changes
-	clusterAction, err := p.planClusterChanges(ctx, clusterID, cfg.Cluster)
-	if err != nil {
-		return nil, fmt.Errorf("failed to plan cluster changes: %w", err)
-	}
-	plan.ClusterAction = clusterAction
-
 	// Get current ASGs for planning
 	currentASGs, err := p.listAllASGs(ctx, clusterID)
 	if err != nil {
@@ -179,15 +171,7 @@ func (p *Provisioner) Apply(ctx context.Context, cfg *config.ClusterConfig, plan
 	// Use cluster ID from the plan (already resolved)
 	clusterID := plan.ClusterID
 
-	// 1. Apply Cluster settings
-	if plan.ClusterAction != nil && plan.ClusterAction.Action == ActionUpdate {
-		log.Printf("Updating cluster settings...")
-		if err := p.applyClusterChanges(ctx, clusterID, cfg.Cluster); err != nil {
-			return fmt.Errorf("failed to apply cluster changes: %w", err)
-		}
-	}
-
-	// 2. Delete LBs first (before deleting ASGs, since ASG has-a LB)
+	// 1. Delete LBs first (before deleting ASGs, since ASG has-a LB)
 	// Build current ASG name->ID map for LB operations
 	currentASGs, err := p.listAllASGs(ctx, clusterID)
 	if err != nil {
@@ -1169,23 +1153,9 @@ func (p *Provisioner) DumpClusterConfig(ctx context.Context, clusterName string)
 		return nil, fmt.Errorf("failed to resolve cluster: %w", err)
 	}
 
-	// Get cluster details
-	clusterResp, err := p.client.GetCluster(ctx, api.GetClusterParams{
-		ClusterID: api.ClusterID(clusterID),
-	})
-	if err != nil {
-		return nil, wrapAPIError(err, "failed to get cluster")
-	}
-
 	cfg := &config.ClusterConfig{
 		ClusterName: clusterName,
 	}
-
-	// Dump cluster settings
-	cfg.Cluster = &config.ClusterSettings{
-		ServicePrincipalID: clusterResp.Cluster.ServicePrincipalID,
-	}
-	// Note: LetsEncryptEmail value is not available from API (only HasLetsEncryptEmail bool)
 
 	// Dump ASGs
 	asgs, err := p.listAllASGs(ctx, clusterID)

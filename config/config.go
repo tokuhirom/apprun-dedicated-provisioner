@@ -4,22 +4,12 @@ package config
 type ClusterConfig struct {
 	// ClusterName is the target cluster name
 	ClusterName string `yaml:"clusterName"`
-	// Cluster contains cluster-level settings (optional, for updating existing cluster)
-	Cluster *ClusterSettings `yaml:"cluster,omitempty"`
 	// AutoScalingGroups is a list of auto scaling group configurations
 	AutoScalingGroups []AutoScalingGroupConfig `yaml:"autoScalingGroups,omitempty"`
 	// LoadBalancers is a list of load balancer configurations
 	LoadBalancers []LoadBalancerConfig `yaml:"loadBalancers,omitempty"`
 	// Applications is a list of application configurations
 	Applications []ApplicationConfig `yaml:"applications"`
-}
-
-// ClusterSettings represents cluster-level settings that can be updated
-type ClusterSettings struct {
-	// LetsEncryptEmail enables Let's Encrypt certificate issuance
-	LetsEncryptEmail *string `yaml:"letsEncryptEmail,omitempty"`
-	// ServicePrincipalID is the service principal ID
-	ServicePrincipalID string `yaml:"servicePrincipalId"`
 }
 
 // AutoScalingGroupConfig represents an auto scaling group configuration

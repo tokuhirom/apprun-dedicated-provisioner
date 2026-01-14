@@ -126,11 +126,6 @@ func (c *ApplyCmd) Run(cli *CLI) error {
 
 	hasChanges := false
 
-	// Check for Cluster changes
-	if plan.ClusterAction != nil && plan.ClusterAction.Action != provisioner.ActionNoop {
-		hasChanges = true
-	}
-
 	// Check for ASG changes (skip doesn't count as a change)
 	for _, action := range plan.ASGActions {
 		if action.Action != provisioner.ASGActionNoop && action.Action != provisioner.ASGActionSkip {
@@ -303,16 +298,6 @@ func loadConfig(path string) (*config.ClusterConfig, error) {
 func printPlan(plan *provisioner.Plan) {
 	fmt.Printf("Cluster: %s (%s)\n\n", plan.ClusterName, plan.ClusterID)
 
-	// Print Cluster settings changes
-	if plan.ClusterAction != nil && plan.ClusterAction.Action == provisioner.ActionUpdate {
-		fmt.Println("=== Cluster Settings ===")
-		fmt.Println("~ cluster (update)")
-		for _, change := range plan.ClusterAction.Changes {
-			fmt.Printf("    %s\n", change)
-		}
-		fmt.Println()
-	}
-
 	// Print ASG changes
 	asgHasChanges := false
 	for _, action := range plan.ASGActions {
@@ -440,15 +425,7 @@ func printPlan(plan *provisioner.Plan) {
 		}
 	}
 
-	clusterUpdate := 0
-	if plan.ClusterAction != nil && plan.ClusterAction.Action == provisioner.ActionUpdate {
-		clusterUpdate = 1
-	}
-
 	fmt.Printf("\nPlan Summary:\n")
-	if clusterUpdate > 0 {
-		fmt.Printf("  Cluster: %d to update\n", clusterUpdate)
-	}
 	if asgCreateCount+asgDeleteCount+asgRecreateCount > 0 {
 		fmt.Printf("  ASG: %d to create, %d to delete, %d to recreate\n", asgCreateCount, asgDeleteCount, asgRecreateCount)
 	}

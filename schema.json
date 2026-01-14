@@ -12,9 +12,6 @@
       "description": "Target cluster name",
       "minLength": 1
     },
-    "cluster": {
-      "$ref": "#/$defs/clusterSettings"
-    },
     "autoScalingGroups": {
       "type": "array",
       "description": "List of auto scaling group configurations",
@@ -39,21 +36,6 @@
     }
   },
   "$defs": {
-    "clusterSettings": {
-      "type": "object",
-      "description": "Cluster-level settings that can be updated",
-      "additionalProperties": false,
-      "properties": {
-        "letsEncryptEmail": {
-          "type": "string",
-          "description": "Email address for Let's Encrypt certificate issuance"
-        },
-        "servicePrincipalId": {
-          "type": "string",
-          "description": "Service principal ID"
-        }
-      }
-    },
     "autoScalingGroup": {
       "type": "object",
       "description": "Auto scaling group configuration (cannot be updated, changes require delete and recreate)",
