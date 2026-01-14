@@ -79,11 +79,12 @@ func validateApplication(app *ApplicationConfig, index int) error {
 	}
 
 	// Validate scaling parameters
-	if v.ScalingMode == "manual" {
+	switch v.ScalingMode {
+	case "manual":
 		if v.FixedScale == nil {
 			return fmt.Errorf("applications[%d]: fixedScale is required when scalingMode is 'manual'", index)
 		}
-	} else if v.ScalingMode == "cpu" {
+	case "cpu":
 		if v.MinScale == nil || v.MaxScale == nil {
 			return fmt.Errorf("applications[%d]: minScale and maxScale are required when scalingMode is 'cpu'", index)
 		}

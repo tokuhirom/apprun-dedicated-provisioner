@@ -276,56 +276,6 @@ func describeASGConfig(cfg config.AutoScalingGroupConfig) []string {
 	}
 }
 
-// applyASGChanges applies the planned ASG changes
-func (p *Provisioner) applyASGChanges(ctx context.Context, clusterID uuid.UUID, actions []ASGAction, desired []config.AutoScalingGroupConfig) error {
-	// Build map of desired configs by name
-	desiredByName := make(map[string]config.AutoScalingGroupConfig)
-	for _, cfg := range desired {
-		desiredByName[cfg.Name] = cfg
-	}
-
-	// Process actions in order: delete first, then create
-	// This handles recreate scenarios
-
-	// First, delete ASGs that need to be removed or recreated
-	for _, action := range actions {
-		if action.Action == ASGActionDelete || action.Action == ASGActionRecreate {
-			if action.ExistingID == nil {
-				return fmt.Errorf("cannot delete ASG %s: missing ID", action.Name)
-			}
-			fmt.Printf("Deleting ASG: %s\n", action.Name)
-			err := p.client.DeleteAutoScalingGroup(ctx, api.DeleteAutoScalingGroupParams{
-				ClusterID:          api.ClusterID(clusterID),
-				AutoScalingGroupID: *action.ExistingID,
-			})
-			if err != nil {
-				return wrapAPIError(err, fmt.Sprintf("failed to delete ASG %s", action.Name))
-			}
-		}
-	}
-
-	// Then, create ASGs that need to be created or recreated
-	for _, action := range actions {
-		if action.Action == ASGActionCreate || action.Action == ASGActionRecreate {
-			cfg, ok := desiredByName[action.Name]
-			if !ok {
-				return fmt.Errorf("cannot create ASG %s: config not found", action.Name)
-			}
-
-			fmt.Printf("Creating ASG: %s\n", action.Name)
-			req := buildCreateASGRequest(cfg)
-			_, err := p.client.CreateAutoScalingGroup(ctx, req, api.CreateAutoScalingGroupParams{
-				ClusterID: api.ClusterID(clusterID),
-			})
-			if err != nil {
-				return wrapAPIError(err, fmt.Sprintf("failed to create ASG %s", action.Name))
-			}
-		}
-	}
-
-	return nil
-}
-
 // buildCreateASGRequest builds the API request from config
 func buildCreateASGRequest(cfg config.AutoScalingGroupConfig) *api.CreateAutoScalingGroup {
 	req := &api.CreateAutoScalingGroup{

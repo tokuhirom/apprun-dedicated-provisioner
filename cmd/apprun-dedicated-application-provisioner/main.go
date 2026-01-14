@@ -168,7 +168,7 @@ func (c *ApplyCmd) Run(cli *CLI) error {
 		}
 		input = strings.TrimSpace(strings.ToLower(input))
 		if input != "y" && input != "yes" {
-			fmt.Println("Apply cancelled.")
+			fmt.Println("Apply canceled.")
 			return nil
 		}
 	}

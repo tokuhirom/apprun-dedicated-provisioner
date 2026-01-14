@@ -353,66 +353,6 @@ func describeLBConfig(cfg config.LoadBalancerConfig) []string {
 	}
 }
 
-// applyLBChanges applies the planned LB changes
-func (p *Provisioner) applyLBChanges(ctx context.Context, clusterID uuid.UUID, actions []LBAction, desired []config.LoadBalancerConfig, asgNameToID map[string]api.AutoScalingGroupID) error {
-	// Build map of desired configs by ASG name and LB name
-	desiredByKey := make(map[string]config.LoadBalancerConfig) // "asgName/lbName" -> config
-	for _, cfg := range desired {
-		key := cfg.AutoScalingGroupName + "/" + cfg.Name
-		desiredByKey[key] = cfg
-	}
-
-	// Process actions in order: delete first, then create
-	// This handles recreate scenarios
-
-	// First, delete LBs that need to be removed or recreated
-	for _, action := range actions {
-		if action.Action == LBActionDelete || action.Action == LBActionRecreate {
-			if action.ExistingID == nil || action.ASGID == nil {
-				return fmt.Errorf("cannot delete LB %s: missing ID", action.Name)
-			}
-			fmt.Printf("Deleting LB: %s (ASG: %s)\n", action.Name, action.ASGName)
-			err := p.client.DeleteLoadBalancer(ctx, api.DeleteLoadBalancerParams{
-				ClusterID:          api.ClusterID(clusterID),
-				AutoScalingGroupID: *action.ASGID,
-				LoadBalancerID:     *action.ExistingID,
-			})
-			if err != nil {
-				return wrapAPIError(err, fmt.Sprintf("failed to delete LB %s", action.Name))
-			}
-		}
-	}
-
-	// Then, create LBs that need to be created or recreated
-	for _, action := range actions {
-		if action.Action == LBActionCreate || action.Action == LBActionRecreate {
-			key := action.ASGName + "/" + action.Name
-			cfg, ok := desiredByKey[key]
-			if !ok {
-				return fmt.Errorf("cannot create LB %s: config not found", action.Name)
-			}
-
-			// Get ASG ID (might be newly created)
-			asgID, ok := asgNameToID[action.ASGName]
-			if !ok {
-				return fmt.Errorf("cannot create LB %s: ASG %s not found", action.Name, action.ASGName)
-			}
-
-			fmt.Printf("Creating LB: %s (ASG: %s)\n", action.Name, action.ASGName)
-			req := buildCreateLBRequest(cfg)
-			_, err := p.client.CreateLoadBalancer(ctx, req, api.CreateLoadBalancerParams{
-				ClusterID:          api.ClusterID(clusterID),
-				AutoScalingGroupID: asgID,
-			})
-			if err != nil {
-				return wrapAPIError(err, fmt.Sprintf("failed to create LB %s", action.Name))
-			}
-		}
-	}
-
-	return nil
-}
-
 // buildCreateLBRequest builds the API request from config
 func buildCreateLBRequest(cfg config.LoadBalancerConfig) *api.CreateLoadBalancer {
 	req := &api.CreateLoadBalancer{

@@ -185,9 +185,9 @@ func (p *Provisioner) Apply(ctx context.Context, cfg *config.ClusterConfig, plan
 	// Delete LBs that need to be deleted or recreated
 	// Collect LBs to delete and wait for them
 	type lbToDelete struct {
-		name   string
-		asgID  api.AutoScalingGroupID
-		lbID   api.LoadBalancerID
+		name  string
+		asgID api.AutoScalingGroupID
+		lbID  api.LoadBalancerID
 	}
 	var lbsToWait []lbToDelete
 
