@@ -1,5 +1,49 @@
 clusterName: "your-cluster-name"
 
+# Auto Scaling Groups (optional)
+autoScalingGroups:
+  - name: "web-asg"
+    zone: "is1a"
+    workerServiceClassPath: "cloud/plan/ssd/1core-2gb"
+    minNodes: 2
+    maxNodes: 10
+    nameServers:
+      - "133.242.0.3"
+      - "133.242.0.4"
+    interfaces:
+      - interfaceIndex: 0
+        upstream: "shared"
+        connectsToLB: true
+      - interfaceIndex: 1
+        upstream: "switch-xxxxxxxx"
+        ipPool:
+          - start: "192.168.1.10"
+            end: "192.168.1.50"
+        netmaskLen: 24
+        defaultGateway: "192.168.1.1"
+        connectsToLB: false
+
+# Load Balancers (optional)
+loadBalancers:
+  - name: "web-lb"
+    autoScalingGroupName: "web-asg"
+    serviceClassPath: "cloud/plan/ssd/1core-2gb"
+    nameServers:
+      - "133.242.0.3"
+    interfaces:
+      - interfaceIndex: 0
+        upstream: "shared"
+      - interfaceIndex: 1
+        upstream: "switch-xxxxxxxx"
+        ipPool:
+          - start: "192.168.1.100"
+            end: "192.168.1.110"
+        netmaskLen: 24
+        defaultGateway: "192.168.1.1"
+        vip: "192.168.1.200"
+        virtualRouterId: 100
+
+# Applications
 applications:
   - name: "webapp"
     spec:

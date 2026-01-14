@@ -94,6 +94,14 @@ Release flow:
 
 See `example.yaml` for full schema. Key fields:
 - `clusterName`: Target cluster name
+- `autoScalingGroups`: Auto scaling group configurations
+- `loadBalancers`: Load balancer configurations
 - `applications[].spec.cpu/memory`: Resource allocation
 - `applications[].spec.scalingMode`: "manual" or "cpu"
 - `applications[].spec.exposedPorts`: Required, defines load balancer settings
+
+## Maintaining Config Structure
+
+When modifying configuration structure in `config/config.go`, you must also update:
+- `example.yaml`: Update example configuration to include new fields
+- `schema.json`: Update JSON Schema to validate new fields
