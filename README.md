@@ -8,7 +8,7 @@
 - **plan/apply**: Terraform 風の2段階操作で安全に変更を適用
 - **設定の継承**: YAML で指定していない項目は既存バージョンの設定を自動的に引き継ぎ
 - **image の分離**: コンテナイメージは既存バージョンから継承（CI/CD でのデプロイと設定管理を分離）
-- **インフラ管理**: クラスタ設定、AutoScalingGroup、LoadBalancer も YAML で管理可能
+- **インフラ管理**: AutoScalingGroup、LoadBalancer も YAML で管理可能
 
 ## インストール
 
@@ -196,8 +196,6 @@ apprun-dedicated-application-provisioner dump my-cluster
 出力例:
 ```yaml
 clusterName: my-cluster
-cluster:
-  servicePrincipalId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 autoScalingGroups:
   - name: web-asg
     zone: is1a
@@ -219,7 +217,6 @@ applications:
 ```
 
 **注意**:
-- `letsEncryptEmail` は API から値を取得できないため、出力されません（設定の有無のみ確認可能）
 - `registryPassword` や `secret: true` の環境変数の値は出力されません
 
 ## 設定ファイル
@@ -228,11 +225,6 @@ applications:
 
 ```yaml
 clusterName: "my-cluster"
-
-# クラスタ設定（オプション）
-cluster:
-  letsEncryptEmail: "admin@example.com"
-  servicePrincipalId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
 # AutoScalingGroup 設定（オプション）
 autoScalingGroups:
@@ -290,22 +282,14 @@ applications:
 
 ### 設定項目
 
-#### クラスタ設定
+#### トップレベル設定
 
 | 項目 | 必須 | 説明 |
 |------|------|------|
 | `clusterName` | Yes | デプロイ先クラスタの名前 |
-| `cluster` | No | クラスタ設定（既存クラスタの更新用） |
 | `autoScalingGroups` | No | AutoScalingGroup 設定の配列 |
 | `loadBalancers` | No | LoadBalancer 設定の配列 |
 | `applications` | Yes | アプリケーション設定の配列 |
-
-#### クラスタ設定 (cluster)
-
-| 項目 | 必須 | 説明 |
-|------|------|------|
-| `letsEncryptEmail` | No | Let's Encrypt 用のメールアドレス |
-| `servicePrincipalId` | Yes | サービスプリンシパル ID |
 
 #### AutoScalingGroup 設定 (autoScalingGroups)
 
