@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.25](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.24...v0.0.25) - 2026-01-17
+- Add Related Tools section by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/54
+
 ## [v0.0.24](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.23...v0.0.24) - 2026-01-14
 - fix: increase deletion timeout from 5 to 10 minutes by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/52
 
