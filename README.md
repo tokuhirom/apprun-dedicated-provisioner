@@ -480,6 +480,74 @@ applications:
             - "new.example.com"
 ```
 
+## Related Tools
+
+### apprun-dedicated-update-image-action との連携
+
+[apprun-dedicated-update-image-action](https://github.com/tokuhirom/apprun-dedicated-update-image-action) と組み合わせることで、AppRun 専有型のアプリケーション管理を効率的に行えます。
+
+| ツール | 役割 |
+|--------|------|
+| **apprun-dedicated-application-provisioner** | アプリケーションの設定（CPU、メモリ、スケーリング、環境変数など）を YAML で管理 |
+| **apprun-dedicated-update-image-action** | CI/CD パイプラインからコンテナイメージのみを更新（GitHub Action） |
+
+### 推奨ワークフロー
+
+1. **設定管理**: このツールで CPU、メモリ、環境変数などの設定を YAML で管理し、`plan`/`apply` で適用
+2. **イメージデプロイ**: アプリケーションコードの変更時に、`apprun-dedicated-update-image-action` でイメージのみを更新
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  apprun-dedicated-application-provisioner                       │
+│  ・CPU/メモリ設定                                                │
+│  ・スケーリング設定                                              │
+│  ・環境変数                                                      │
+│  ・ポート設定                                                    │
+│  → YAML で宣言的に管理、plan/apply で適用                        │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  apprun-dedicated-update-image-action                           │
+│  ・コンテナイメージの更新                                        │
+│  → GitHub Actions で CI/CD パイプラインから自動デプロイ           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+この分離により：
+- **設定変更**はコードレビューを経て慎重に適用
+- **イメージ更新**は CI/CD で自動化して高速にデプロイ
+
+### GitHub Actions でのイメージデプロイ例
+
+```yaml
+name: Deploy to AppRun
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+
+      - name: Update AppRun application
+        uses: tokuhirom/apprun-dedicated-update-image-action@v1
+        with:
+          applicationID: ${{ vars.APPLICATION_ID }}
+          sakuraAccessToken: ${{ vars.SAKURA_ACCESS_TOKEN }}
+          sakuraAccessTokenSecret: ${{ secrets.SAKURA_ACCESS_TOKEN_SECRET }}
+          image: ghcr.io/${{ github.repository }}:${{ github.sha }}
+```
+
 ## ライセンス
 
 MIT
