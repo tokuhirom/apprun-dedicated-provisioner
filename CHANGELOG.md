@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.30](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.29...v0.0.30) - 2026-01-19
+- fix: checkout main branch for flake update PR creation by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/65
+
 ## [v0.0.29](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.28...v0.0.29) - 2026-01-19
 - refactor: use goreleaser binaries for nix flake by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/63
 
