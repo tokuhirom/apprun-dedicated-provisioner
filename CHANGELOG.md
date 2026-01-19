@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.29](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.28...v0.0.29) - 2026-01-19
+- refactor: use goreleaser binaries for nix flake by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/63
+
 ## [v0.0.28](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.27...v0.0.28) - 2026-01-19
 - feat: add Nix flake support with gomod2nix by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/60
 - refactor: use goreleaser binaries instead of building from source by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/62
