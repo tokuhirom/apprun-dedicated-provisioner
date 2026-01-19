@@ -47,6 +47,9 @@ loadBalancers:
 applications:
   - name: "webapp"
     spec:
+      # Use the image specified in config instead of inheriting from previous version.
+      # Useful for static images like nginx:latest that don't need to be updated by CI/CD.
+      useConfigImage: true
       cpu: 500
       memory: 1024
       scalingMode: "cpu"
@@ -75,6 +78,9 @@ applications:
 
   - name: "api"
     spec:
+      # useConfigImage is omitted (defaults to false), so the image is inherited
+      # from the previous version. Use apprun-dedicated-update-image-action to update
+      # the image via CI/CD pipeline.
       cpu: 1000
       memory: 2048
       scalingMode: "manual"

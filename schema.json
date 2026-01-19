@@ -243,6 +243,11 @@
       "description": "Application specification",
       "additionalProperties": false,
       "properties": {
+        "useConfigImage": {
+          "type": "boolean",
+          "description": "When true, use the image from config instead of inheriting from the previous version. Use this for static images like nginx:latest.",
+          "default": false
+        },
         "cpu": {
           "type": "integer",
           "description": "CPU in mCPU",
