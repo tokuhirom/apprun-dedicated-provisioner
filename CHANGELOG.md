@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.31](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.30...v0.0.31) - 2026-01-19
+- fix: use GitHub App token for flake update PR creation by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/68
+
 ## [v0.0.30](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.29...v0.0.30) - 2026-01-19
 - fix: checkout main branch for flake update PR creation by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/65
 
