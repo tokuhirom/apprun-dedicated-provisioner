@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.28](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.27...v0.0.28) - 2026-01-19
+- feat: add Nix flake support with gomod2nix by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/60
+- refactor: use goreleaser binaries instead of building from source by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/62
+
 ## [v0.0.27](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.26...v0.0.27) - 2026-01-19
 - Rename from apprun-dedicated-application-provisioner to apprun-dedicated-provisioner by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/58
 
