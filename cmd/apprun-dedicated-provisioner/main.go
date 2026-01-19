@@ -9,9 +9,9 @@ import (
 
 	"github.com/alecthomas/kong"
 
-	"github.com/tokuhirom/apprun-dedicated-application-provisioner/config"
-	"github.com/tokuhirom/apprun-dedicated-application-provisioner/provisioner"
-	"github.com/tokuhirom/apprun-dedicated-application-provisioner/state"
+	"github.com/tokuhirom/apprun-dedicated-provisioner/config"
+	"github.com/tokuhirom/apprun-dedicated-provisioner/provisioner"
+	"github.com/tokuhirom/apprun-dedicated-provisioner/state"
 )
 
 // Version information (set by goreleaser)
@@ -36,7 +36,7 @@ type CLI struct {
 type VersionFlag bool
 
 func (v VersionFlag) BeforeApply() error {
-	fmt.Printf("apprun-dedicated-application-provisioner %s\n", version)
+	fmt.Printf("apprun-dedicated-provisioner %s\n", version)
 	fmt.Printf("  commit: %s\n", commit)
 	fmt.Printf("  built:  %s\n", date)
 	os.Exit(0)

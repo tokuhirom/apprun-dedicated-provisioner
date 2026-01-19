@@ -7,8 +7,8 @@ import (
 
 	"github.com/r3labs/diff/v3"
 
-	"github.com/tokuhirom/apprun-dedicated-application-provisioner/api"
-	"github.com/tokuhirom/apprun-dedicated-application-provisioner/config"
+	"github.com/tokuhirom/apprun-dedicated-provisioner/api"
+	"github.com/tokuhirom/apprun-dedicated-provisioner/config"
 )
 
 // NormalizedSpec is a normalized representation of application spec for comparison.

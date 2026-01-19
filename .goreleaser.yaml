@@ -1,15 +1,15 @@
 version: 2
 
-project_name: apprun-dedicated-application-provisioner
+project_name: apprun-dedicated-provisioner
 
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: apprun-dedicated-application-provisioner
-    main: ./cmd/apprun-dedicated-application-provisioner
-    binary: apprun-dedicated-application-provisioner
+  - id: apprun-dedicated-provisioner
+    main: ./cmd/apprun-dedicated-provisioner
+    binary: apprun-dedicated-provisioner
     env:
       - CGO_ENABLED=0
     goos:
@@ -45,9 +45,9 @@ changelog:
       - Merge branch
 
 dockers_v2:
-  - id: apprun-dedicated-application-provisioner
+  - id: apprun-dedicated-provisioner
     ids:
-      - apprun-dedicated-application-provisioner
+      - apprun-dedicated-provisioner
     dockerfile: Dockerfile
     images:
       - "ghcr.io/tokuhirom/{{ .ProjectName }}"
@@ -68,16 +68,16 @@ brews:
       owner: tokuhirom
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
-    name: apprun-dedicated-application-provisioner
-    homepage: "https://github.com/tokuhirom/apprun-dedicated-application-provisioner"
+    name: apprun-dedicated-provisioner
+    homepage: "https://github.com/tokuhirom/apprun-dedicated-provisioner"
     description: "CLI tool for managing Sakura Cloud AppRun Dedicated application provisioning"
     license: "MIT"
     test: |
-      system "#{bin}/apprun-dedicated-application-provisioner", "--version"
+      system "#{bin}/apprun-dedicated-provisioner", "--version"
     install: |
-      bin.install "apprun-dedicated-application-provisioner"
+      bin.install "apprun-dedicated-provisioner"
 
 release:
   github:
     owner: tokuhirom
-    name: apprun-dedicated-application-provisioner
+    name: apprun-dedicated-provisioner

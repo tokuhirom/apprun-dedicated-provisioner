@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/tokuhirom/apprun-dedicated-application-provisioner/api"
+	"github.com/tokuhirom/apprun-dedicated-provisioner/api"
 )
 
 const defaultBaseURL = "https://secure.sakura.ad.jp/cloud/api/apprun-dedicated/1.0"
