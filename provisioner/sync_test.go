@@ -958,3 +958,233 @@ func TestApply_UpdateApplication_WithoutActivation(t *testing.T) {
 	app, _ := mockServer.GetApplicationByName(clusterID, "existing-app")
 	assert.Equal(t, int32(1), app.ActiveVersion.Value)
 }
+
+// =============================================================================
+// UseConfigImage Tests
+// =============================================================================
+
+func TestApply_UseConfigImage_UpdatesImage(t *testing.T) {
+	mockServer, client, cleanup := setupMockServer(t, "test-token", "test-secret")
+	defer cleanup()
+
+	clusterID := createTestCluster(mockServer, "my-cluster")
+	appID := createTestApplication(mockServer, clusterID, "existing-app")
+
+	// Create version with specific image
+	mockServer.AddApplicationVersion(appID, api.ReadApplicationVersionDetail{
+		Version:     1,
+		CPU:         500,
+		Memory:      1024,
+		ScalingMode: api.ScalingModeManual,
+		FixedScale:  api.OptInt32{Value: 2, Set: true},
+		Image:       "nginx:1.0.0", // Original image
+		ExposedPorts: []api.ExposedPort{
+			{
+				TargetPort:       80,
+				LoadBalancerPort: api.NilPort{Value: 443, Null: false},
+				UseLetsEncrypt:   true,
+				HealthCheck:      api.NilHealthCheck{Null: true},
+			},
+		},
+	})
+
+	provisioner := NewProvisioner(client, state.NewState(), "")
+	cfg := &config.ClusterConfig{
+		ClusterName: "my-cluster",
+		Applications: []config.ApplicationConfig{
+			{
+				Name: "existing-app",
+				Spec: config.ApplicationSpec{
+					UseConfigImage: true, // Use image from config
+					CPU:            500,
+					Memory:         1024,
+					ScalingMode:    "manual",
+					FixedScale:     int32Ptr(2),
+					Image:          "nginx:2.0.0", // New image in config
+					ExposedPorts: []config.ExposedPortConfig{
+						{TargetPort: 80, LoadBalancerPort: int32Ptr(443), UseLetsEncrypt: true},
+					},
+				},
+			},
+		},
+	}
+
+	plan, err := provisioner.CreatePlan(context.Background(), cfg)
+	require.NoError(t, err)
+	require.Len(t, plan.Actions, 1)
+	assert.Equal(t, ActionUpdate, plan.Actions[0].Action)
+
+	err = provisioner.Apply(context.Background(), cfg, plan, ApplyOptions{Activate: true})
+	require.NoError(t, err)
+
+	// Verify image was updated from config (not inherited)
+	newVersion, found := mockServer.GetApplicationVersionByKey(appID, 2)
+	require.True(t, found)
+	assert.Equal(t, "nginx:2.0.0", newVersion.Image) // Should be from config
+}
+
+func TestApply_UseConfigImage_False_InheritsImage(t *testing.T) {
+	mockServer, client, cleanup := setupMockServer(t, "test-token", "test-secret")
+	defer cleanup()
+
+	clusterID := createTestCluster(mockServer, "my-cluster")
+	appID := createTestApplication(mockServer, clusterID, "existing-app")
+
+	// Create version with specific image
+	mockServer.AddApplicationVersion(appID, api.ReadApplicationVersionDetail{
+		Version:     1,
+		CPU:         500,
+		Memory:      1024,
+		ScalingMode: api.ScalingModeManual,
+		FixedScale:  api.OptInt32{Value: 2, Set: true},
+		Image:       "myapp:v1.0.0", // Original image
+		ExposedPorts: []api.ExposedPort{
+			{
+				TargetPort:       80,
+				LoadBalancerPort: api.NilPort{Value: 443, Null: false},
+				UseLetsEncrypt:   true,
+				HealthCheck:      api.NilHealthCheck{Null: true},
+			},
+		},
+	})
+
+	provisioner := NewProvisioner(client, state.NewState(), "")
+	cfg := &config.ClusterConfig{
+		ClusterName: "my-cluster",
+		Applications: []config.ApplicationConfig{
+			{
+				Name: "existing-app",
+				Spec: config.ApplicationSpec{
+					UseConfigImage: false, // Explicitly false (same as omitting)
+					CPU:            1000,  // Changed
+					Memory:         1024,
+					ScalingMode:    "manual",
+					FixedScale:     int32Ptr(2),
+					Image:          "different:image", // This should be ignored
+					ExposedPorts: []config.ExposedPortConfig{
+						{TargetPort: 80, LoadBalancerPort: int32Ptr(443), UseLetsEncrypt: true},
+					},
+				},
+			},
+		},
+	}
+
+	plan, err := provisioner.CreatePlan(context.Background(), cfg)
+	require.NoError(t, err)
+
+	err = provisioner.Apply(context.Background(), cfg, plan, ApplyOptions{Activate: true})
+	require.NoError(t, err)
+
+	// Verify image was inherited, not changed
+	newVersion, found := mockServer.GetApplicationVersionByKey(appID, 2)
+	require.True(t, found)
+	assert.Equal(t, "myapp:v1.0.0", newVersion.Image) // Should be inherited
+	assert.Equal(t, int64(1000), newVersion.CPU)      // Should be updated
+}
+
+func TestCreatePlan_UseConfigImage_ReportsImageChange(t *testing.T) {
+	mockServer, client, cleanup := setupMockServer(t, "test-token", "test-secret")
+	defer cleanup()
+
+	clusterID := createTestCluster(mockServer, "my-cluster")
+	appID := createTestApplication(mockServer, clusterID, "existing-app")
+
+	// Create version with specific image
+	mockServer.AddApplicationVersion(appID, api.ReadApplicationVersionDetail{
+		Version:     1,
+		CPU:         500,
+		Memory:      1024,
+		ScalingMode: api.ScalingModeManual,
+		FixedScale:  api.OptInt32{Value: 2, Set: true},
+		Image:       "nginx:1.0.0",
+		ExposedPorts: []api.ExposedPort{
+			{
+				TargetPort:       80,
+				LoadBalancerPort: api.NilPort{Value: 443, Null: false},
+				UseLetsEncrypt:   true,
+				HealthCheck:      api.NilHealthCheck{Null: true},
+			},
+		},
+	})
+
+	provisioner := NewProvisioner(client, state.NewState(), "")
+	cfg := &config.ClusterConfig{
+		ClusterName: "my-cluster",
+		Applications: []config.ApplicationConfig{
+			{
+				Name: "existing-app",
+				Spec: config.ApplicationSpec{
+					UseConfigImage: true, // Use image from config
+					CPU:            500,
+					Memory:         1024,
+					ScalingMode:    "manual",
+					FixedScale:     int32Ptr(2),
+					Image:          "nginx:2.0.0", // Different image
+					ExposedPorts: []config.ExposedPortConfig{
+						{TargetPort: 80, LoadBalancerPort: int32Ptr(443), UseLetsEncrypt: true},
+					},
+				},
+			},
+		},
+	}
+
+	plan, err := provisioner.CreatePlan(context.Background(), cfg)
+	require.NoError(t, err)
+	require.Len(t, plan.Actions, 1)
+	assert.Equal(t, ActionUpdate, plan.Actions[0].Action)
+	// Image change should be reported when UseConfigImage is true
+	assert.Contains(t, plan.Actions[0].Changes, "Image: nginx:1.0.0 -> nginx:2.0.0")
+}
+
+func TestCreatePlan_UseConfigImage_NoChangeWhenSameImage(t *testing.T) {
+	mockServer, client, cleanup := setupMockServer(t, "test-token", "test-secret")
+	defer cleanup()
+
+	clusterID := createTestCluster(mockServer, "my-cluster")
+	appID := createTestApplication(mockServer, clusterID, "existing-app")
+
+	// Create version with specific image
+	mockServer.AddApplicationVersion(appID, api.ReadApplicationVersionDetail{
+		Version:     1,
+		CPU:         500,
+		Memory:      1024,
+		ScalingMode: api.ScalingModeManual,
+		FixedScale:  api.OptInt32{Value: 2, Set: true},
+		Image:       "nginx:latest",
+		ExposedPorts: []api.ExposedPort{
+			{
+				TargetPort:       80,
+				LoadBalancerPort: api.NilPort{Value: 443, Null: false},
+				UseLetsEncrypt:   true,
+				HealthCheck:      api.NilHealthCheck{Null: true},
+			},
+		},
+	})
+
+	provisioner := NewProvisioner(client, state.NewState(), "")
+	cfg := &config.ClusterConfig{
+		ClusterName: "my-cluster",
+		Applications: []config.ApplicationConfig{
+			{
+				Name: "existing-app",
+				Spec: config.ApplicationSpec{
+					UseConfigImage: true, // Use image from config
+					CPU:            500,
+					Memory:         1024,
+					ScalingMode:    "manual",
+					FixedScale:     int32Ptr(2),
+					Image:          "nginx:latest", // Same image
+					ExposedPorts: []config.ExposedPortConfig{
+						{TargetPort: 80, LoadBalancerPort: int32Ptr(443), UseLetsEncrypt: true},
+					},
+				},
+			},
+		},
+	}
+
+	plan, err := provisioner.CreatePlan(context.Background(), cfg)
+	require.NoError(t, err)
+	require.Len(t, plan.Actions, 1)
+	assert.Equal(t, ActionNoop, plan.Actions[0].Action) // No changes
+	assert.Empty(t, plan.Actions[0].Changes)
+}

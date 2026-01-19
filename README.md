@@ -328,6 +328,7 @@ applications:
 
 | 項目 | 必須 | 説明 | 継承 |
 |------|------|------|------|
+| `useConfigImage` | No | `true` の場合、`image` を config から使用。`false`（デフォルト）の場合、既存バージョンから継承 | No |
 | `cpu` | No | CPU (mCPU) | Yes |
 | `memory` | No | メモリ (MB) | Yes |
 | `scalingMode` | No | `manual` または `cpu` | Yes |
@@ -372,8 +373,32 @@ applications:
 
 既存のアプリケーションを更新する場合、YAML で指定していない項目は既存バージョンから自動的に継承されます。
 
-- **image**: 常に既存バージョンから継承（新規アプリケーションの場合のみ YAML の値を使用）
+- **image**: デフォルトでは既存バージョンから継承。`useConfigImage: true` を指定すると YAML の値を使用
 - **その他の項目**: YAML で指定されていれば使用、省略されていれば既存を継承
+
+### image の継承と useConfigImage
+
+| ケース | useConfigImage | 動作 |
+|--------|----------------|------|
+| nginx:latest などの公開イメージ | `true` | config の image を適用 |
+| 自前ビルドのイメージ | `false`（デフォルト） | 既存バージョンから継承（apprun-dedicated-update-image-action で更新） |
+
+```yaml
+applications:
+  # 公開イメージを使用する場合
+  - name: "nginx-proxy"
+    spec:
+      useConfigImage: true   # config の image を使う
+      image: "nginx:latest"
+      cpu: 500
+
+  # 自前ビルドイメージの場合（CI/CD でイメージ更新）
+  - name: "my-api"
+    spec:
+      # useConfigImage 省略 → false（継承）
+      image: "myregistry/api:v1.0.0"  # 新規作成時のみ使用
+      cpu: 1000
+```
 
 これにより、CI/CD でのイメージデプロイと、このツールでの設定管理を分離できます。
 

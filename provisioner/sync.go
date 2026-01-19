@@ -415,7 +415,9 @@ func (p *Provisioner) compareVersion(appName string, current *api.ReadApplicatio
 	currentNorm := NormalizeFromAPI(current)
 	desiredNorm := NormalizeFromConfig(desired)
 
-	specChanges, err := CompareSpecs(currentNorm, desiredNorm, CompareSpecsOptions{SkipImage: true})
+	specChanges, err := CompareSpecs(currentNorm, desiredNorm, CompareSpecsOptions{
+		SkipImage: !desired.UseConfigImage,
+	})
 	if err != nil {
 		log.Printf("Warning: failed to compare specs: %v", err)
 	}
@@ -718,11 +720,11 @@ func (p *Provisioner) buildCreateVersionRequest(v *config.ApplicationSpec) *api.
 func (p *Provisioner) buildCreateVersionRequestWithBase(v *config.ApplicationSpec, base *api.ReadApplicationVersionDetail) *api.CreateApplicationVersion {
 	req := &api.CreateApplicationVersion{}
 
-	// Image: always use existing if available, otherwise from config
-	if base != nil {
-		req.Image = base.Image
-	} else {
+	// Image: use config if UseConfigImage is true, otherwise inherit from base
+	if v.UseConfigImage || base == nil {
 		req.Image = v.Image
+	} else {
+		req.Image = base.Image
 	}
 
 	// CPU: use config if specified (non-zero), otherwise inherit
