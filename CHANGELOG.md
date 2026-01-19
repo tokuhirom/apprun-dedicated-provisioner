@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.32](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.31...v0.0.32) - 2026-01-19
+- fix: remove checksums.txt before creating PR by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/71
+
 ## [v0.0.31](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.30...v0.0.31) - 2026-01-19
 - fix: use GitHub App token for flake update PR creation by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/68
 
