@@ -8,22 +8,22 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     let
-      version = "0.0.27";
+      version = "0.0.31";
 
       # SHA256 hashes from goreleaser checksums.txt
       hashes = {
-        "x86_64-linux" = "04e06e7aad7faae5e650ab15c027c5015e7352a41ae92b2471b59d67be0135c1";
-        "aarch64-linux" = "337545e393b5493438bdba8a81daaf433afe57fa847565fd1e5ce6668abd9961";
-        "x86_64-darwin" = "7b12e35c80458f9a55e4861ae187ef92df12a4b16b3021de4e68e7e8f879a2ea";
-        "aarch64-darwin" = "400f99ea2b2b6da23145ea6c0412463bc329a50c7eb6f334abfa7c24997cbc15";
+        "x86_64-linux" = "dd91ec1afa07d6b52b9825b935afb77b75d64948196a49539c07a4cf024f539c";
+        "aarch64-linux" = "73ee6d041261155c85a479688c4e626ca8ac8a09b32e5725a497618aa5d836a7";
+        "x86_64-darwin" = "10092e7454ee2e4cee57f9cb08a6bfb03d4097446fe473bcbca4910b18b0a628";
+        "aarch64-darwin" = "f0b77c6992a9b9cbc55794dfbbe624cd7ada73265aff99d9f0a54d8794714902";
       };
 
       # Map Nix system to goreleaser naming
       systemToGoreleaser = system: {
-        "x86_64-linux" = "linux_amd64";
-        "aarch64-linux" = "linux_arm64";
-        "x86_64-darwin" = "darwin_amd64";
-        "aarch64-darwin" = "darwin_arm64";
+        "x86_64-linux" = "dd91ec1afa07d6b52b9825b935afb77b75d64948196a49539c07a4cf024f539c";
+        "aarch64-linux" = "73ee6d041261155c85a479688c4e626ca8ac8a09b32e5725a497618aa5d836a7";
+        "x86_64-darwin" = "10092e7454ee2e4cee57f9cb08a6bfb03d4097446fe473bcbca4910b18b0a628";
+        "aarch64-darwin" = "f0b77c6992a9b9cbc55794dfbbe624cd7ada73265aff99d9f0a54d8794714902";
       }.${system};
 
     in
