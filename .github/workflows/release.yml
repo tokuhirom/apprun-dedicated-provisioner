@@ -84,6 +84,9 @@ jobs:
           DARWIN_AMD64=$(grep darwin_amd64 checksums.txt | awk '{print $1}')
           DARWIN_ARM64=$(grep darwin_arm64 checksums.txt | awk '{print $1}')
 
+          # Remove checksums.txt to avoid committing it
+          rm checksums.txt
+
           # Update version
           sed -i "s/version = \"[^\"]*\"/version = \"$VERSION\"/" flake.nix
 
