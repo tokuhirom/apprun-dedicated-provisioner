@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tokuhirom/apprun-dedicated-application-provisioner/api"
-	"github.com/tokuhirom/apprun-dedicated-application-provisioner/config"
-	"github.com/tokuhirom/apprun-dedicated-application-provisioner/state"
-	"github.com/tokuhirom/apprun-dedicated-application-provisioner/testutil"
+	"github.com/tokuhirom/apprun-dedicated-provisioner/api"
+	"github.com/tokuhirom/apprun-dedicated-provisioner/config"
+	"github.com/tokuhirom/apprun-dedicated-provisioner/state"
+	"github.com/tokuhirom/apprun-dedicated-provisioner/testutil"
 )
 
 // =============================================================================

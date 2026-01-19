@@ -1,4 +1,4 @@
-# apprun-dedicated-application-provisioner
+# apprun-dedicated-provisioner
 
 さくらのクラウド AppRun 専有型のアプリケーション設定を YAML ファイルで管理し、同期するツールです。
 
@@ -15,7 +15,7 @@
 ### Docker（推奨）
 
 ```bash
-docker pull ghcr.io/tokuhirom/apprun-dedicated-application-provisioner:latest
+docker pull ghcr.io/tokuhirom/apprun-dedicated-provisioner:latest
 ```
 
 Docker での実行例:
@@ -25,7 +25,7 @@ docker run --rm \
   -e SAKURA_ACCESS_TOKEN="your-access-token-uuid" \
   -e SAKURA_ACCESS_TOKEN_SECRET="your-access-token-secret" \
   -v $(pwd)/apprun.yaml:/apprun.yaml:ro \
-  ghcr.io/tokuhirom/apprun-dedicated-application-provisioner:latest \
+  ghcr.io/tokuhirom/apprun-dedicated-provisioner:latest \
   plan -c /apprun.yaml
 ```
 
@@ -34,7 +34,7 @@ docker run --rm \
 <details>
 <summary>GitHub Releases からダウンロード</summary>
 
-[Releases ページ](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/releases) から、お使いの OS/アーキテクチャに合ったバイナリをダウンロードしてください。
+[Releases ページ](https://github.com/tokuhirom/apprun-dedicated-provisioner/releases) から、お使いの OS/アーキテクチャに合ったバイナリをダウンロードしてください。
 
 </details>
 
@@ -42,7 +42,7 @@ docker run --rm \
 <summary>go install</summary>
 
 ```bash
-go install github.com/tokuhirom/apprun-dedicated-application-provisioner/cmd/apprun-dedicated-application-provisioner@latest
+go install github.com/tokuhirom/apprun-dedicated-provisioner/cmd/apprun-dedicated-provisioner@latest
 ```
 
 </details>
@@ -51,9 +51,9 @@ go install github.com/tokuhirom/apprun-dedicated-application-provisioner/cmd/app
 <summary>ソースからビルド</summary>
 
 ```bash
-git clone https://github.com/tokuhirom/apprun-dedicated-application-provisioner.git
-cd apprun-dedicated-application-provisioner
-go build -o bin/apprun-dedicated-application-provisioner ./cmd/apprun-dedicated-application-provisioner
+git clone https://github.com/tokuhirom/apprun-dedicated-provisioner.git
+cd apprun-dedicated-provisioner
+go build -o bin/apprun-dedicated-provisioner ./cmd/apprun-dedicated-provisioner
 ```
 
 </details>
@@ -72,7 +72,7 @@ export SAKURA_ACCESS_TOKEN_SECRET="your-access-token-secret"
 ### 変更内容の確認 (plan)
 
 ```bash
-apprun-dedicated-application-provisioner plan -c apprun.yaml
+apprun-dedicated-provisioner plan -c apprun.yaml
 ```
 
 | オプション | 説明 |
@@ -97,10 +97,10 @@ Plan: 1 to create, 1 to update, 1 unchanged.
 
 ```bash
 # バージョンの作成のみ（アクティブ化しない）
-apprun-dedicated-application-provisioner apply -c apprun.yaml
+apprun-dedicated-provisioner apply -c apprun.yaml
 
 # バージョンの作成とアクティブ化
-apprun-dedicated-application-provisioner apply -c apprun.yaml --activate
+apprun-dedicated-provisioner apply -c apprun.yaml --activate
 ```
 
 | オプション | 説明 |
@@ -113,7 +113,7 @@ apprun-dedicated-application-provisioner apply -c apprun.yaml --activate
 ### バージョン一覧の表示 (versions)
 
 ```bash
-apprun-dedicated-application-provisioner versions -c apprun.yaml -a webapp
+apprun-dedicated-provisioner versions -c apprun.yaml -a webapp
 ```
 
 | オプション | 説明 |
@@ -139,10 +139,10 @@ Latest version: 3
 
 ```bash
 # アクティブバージョンと最新バージョンの差分を表示（デフォルト）
-apprun-dedicated-application-provisioner diff -c apprun.yaml -a webapp
+apprun-dedicated-provisioner diff -c apprun.yaml -a webapp
 
 # 特定のバージョン間の差分を表示
-apprun-dedicated-application-provisioner diff -c apprun.yaml -a webapp --from 1 --to 3
+apprun-dedicated-provisioner diff -c apprun.yaml -a webapp --from 1 --to 3
 ```
 
 | オプション | 説明 |
@@ -173,10 +173,10 @@ Note: secret env values and registryPassword cannot be compared (values not retu
 
 ```bash
 # 最新バージョンをアクティブ化（デフォルト）
-apprun-dedicated-application-provisioner activate -c apprun.yaml -a webapp
+apprun-dedicated-provisioner activate -c apprun.yaml -a webapp
 
 # 特定のバージョンをアクティブ化
-apprun-dedicated-application-provisioner activate -c apprun.yaml -a webapp -t 2
+apprun-dedicated-provisioner activate -c apprun.yaml -a webapp -t 2
 ```
 
 | オプション | 説明 |
@@ -188,7 +188,7 @@ apprun-dedicated-application-provisioner activate -c apprun.yaml -a webapp -t 2
 ### 現在の設定をダンプ (dump)
 
 ```bash
-apprun-dedicated-application-provisioner dump my-cluster
+apprun-dedicated-provisioner dump my-cluster
 ```
 
 指定したクラスタの現在の設定を YAML 形式で出力します。既存環境の設定を取り込む際や、設定のバックアップに使用できます。
@@ -513,7 +513,7 @@ applications:
 
 | ツール | 役割 |
 |--------|------|
-| **apprun-dedicated-application-provisioner** | アプリケーションの設定（CPU、メモリ、スケーリング、環境変数など）を YAML で管理 |
+| **apprun-dedicated-provisioner** | アプリケーションの設定（CPU、メモリ、スケーリング、環境変数など）を YAML で管理 |
 | **apprun-dedicated-update-image-action** | CI/CD パイプラインからコンテナイメージのみを更新（GitHub Action） |
 
 ### 推奨ワークフロー
@@ -523,7 +523,7 @@ applications:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  apprun-dedicated-application-provisioner                       │
+│  apprun-dedicated-provisioner                       │
 │  ・CPU/メモリ設定                                                │
 │  ・スケーリング設定                                              │
 │  ・環境変数                                                      │

@@ -1,4 +1,4 @@
-module github.com/tokuhirom/apprun-dedicated-application-provisioner
+module github.com/tokuhirom/apprun-dedicated-provisioner
 
 go 1.25.5
 

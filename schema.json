@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/tokuhirom/apprun-dedicated-application-provisioner/schema.json",
+  "$id": "https://github.com/tokuhirom/apprun-dedicated-provisioner/schema.json",
   "title": "AppRun Dedicated Application Provisioner Configuration",
-  "description": "Configuration schema for apprun-dedicated-application-provisioner",
+  "description": "Configuration schema for apprun-dedicated-provisioner",
   "type": "object",
   "required": ["clusterName", "applications"],
   "additionalProperties": false,

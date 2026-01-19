@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/ogen-go/ogen/ogenerrors"
 
-	"github.com/tokuhirom/apprun-dedicated-application-provisioner/api"
-	"github.com/tokuhirom/apprun-dedicated-application-provisioner/config"
+	"github.com/tokuhirom/apprun-dedicated-provisioner/api"
+	"github.com/tokuhirom/apprun-dedicated-provisioner/config"
 )
 
 // ASGActionType represents the type of action for an ASG

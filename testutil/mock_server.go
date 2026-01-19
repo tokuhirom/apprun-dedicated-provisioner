@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/tokuhirom/apprun-dedicated-application-provisioner/api"
+	"github.com/tokuhirom/apprun-dedicated-provisioner/api"
 )
 
 // ApplicationVersionKey is a key for storing application versions.

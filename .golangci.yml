@@ -29,7 +29,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/tokuhirom/apprun-dedicated-application-provisioner
+        - github.com/tokuhirom/apprun-dedicated-provisioner
 
 issues:
   max-issues-per-linter: 0

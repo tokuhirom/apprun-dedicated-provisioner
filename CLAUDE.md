@@ -10,10 +10,10 @@ CLI tool for managing Sakura Cloud's AppRun Dedicated application provisioning. 
 
 ```bash
 # Build
-go build -o bin/apprun-dedicated-application-provisioner ./cmd/apprun-dedicated-application-provisioner
+go build -o bin/apprun-dedicated-provisioner ./cmd/apprun-dedicated-provisioner
 
 # Install globally
-go install github.com/tokuhirom/apprun-dedicated-application-provisioner/cmd/apprun-dedicated-application-provisioner@latest
+go install github.com/tokuhirom/apprun-dedicated-provisioner/cmd/apprun-dedicated-provisioner@latest
 
 # Dependency management
 go mod tidy
@@ -27,19 +27,19 @@ export SAKURA_ACCESS_TOKEN="<uuid-token>"
 export SAKURA_ACCESS_TOKEN_SECRET="<secret>"
 
 # Preview changes (dry-run)
-./bin/apprun-dedicated-application-provisioner plan -c config.yaml
+./bin/apprun-dedicated-provisioner plan -c config.yaml
 
 # Apply changes (create/update version only, no activation)
-./bin/apprun-dedicated-application-provisioner apply -c config.yaml
+./bin/apprun-dedicated-provisioner apply -c config.yaml
 
 # Apply changes and activate version
-./bin/apprun-dedicated-application-provisioner apply -c config.yaml --activate
+./bin/apprun-dedicated-provisioner apply -c config.yaml --activate
 ```
 
 ## Architecture
 
 ```
-cmd/apprun-dedicated-application-provisioner/main.go  → CLI entry point (Kong framework)
+cmd/apprun-dedicated-provisioner/main.go  → CLI entry point (Kong framework)
          ↓
 config/                         → YAML loading and validation
          ↓

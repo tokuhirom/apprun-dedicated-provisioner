@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tokuhirom/apprun-dedicated-application-provisioner/api"
+	"github.com/tokuhirom/apprun-dedicated-provisioner/api"
 )
 
 func TestMockServer_CreateCluster(t *testing.T) {
