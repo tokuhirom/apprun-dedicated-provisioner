@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.26](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.25...v0.0.26) - 2026-01-19
+- Add useConfigImage option for per-application image source control by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/56
+
 ## [v0.0.25](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.24...v0.0.25) - 2026-01-17
 - Add Related Tools section by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/54
 
