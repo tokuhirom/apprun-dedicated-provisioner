@@ -54,7 +54,7 @@ api/                            → Auto-generated OpenAPI client
 
 - **Plan/Apply workflow**: Changes are previewed before execution
 - **Activation separation**: Version creation and activation are separate (--activate flag required for activation)
-- **Configuration inheritance**: Image field inherited from existing version (enables CI/CD separation)
+- **Configuration inheritance**: By default, image field uses value from YAML config; can optionally inherit from existing version with `inheritImage: true`
 - **Cluster-based organization**: Applications grouped by cluster
 
 ### Module Responsibilities

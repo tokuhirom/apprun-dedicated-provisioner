@@ -102,11 +102,11 @@ type ApplicationConfig struct {
 
 // ApplicationSpec represents the application spec settings
 type ApplicationSpec struct {
-	// UseConfigImage determines whether to use the image from config
-	// instead of inheriting from the previous version.
-	// When true, the image field in config is used.
-	// When false (default), the image is inherited from the previous version.
-	UseConfigImage bool `yaml:"useConfigImage,omitempty"`
+	// InheritImage determines whether to inherit the image from the previous version
+	// instead of using the image specified in the config.
+	// When false (default), the image field in config is used.
+	// When true, the image is inherited from the previous version.
+	InheritImage bool `yaml:"inheritImage,omitempty"`
 	// CPU in mCPU (100-64000)
 	CPU int64 `yaml:"cpu"`
 	// Memory in MB (128-131072)

@@ -243,9 +243,9 @@
       "description": "Application specification",
       "additionalProperties": false,
       "properties": {
-        "useConfigImage": {
+        "inheritImage": {
           "type": "boolean",
-          "description": "When true, use the image from config instead of inheriting from the previous version. Use this for static images like nginx:latest.",
+          "description": "When true, inherit the image from the previous version instead of using the image specified in config. When false (default), the image from config is used.",
           "default": false
         },
         "cpu": {

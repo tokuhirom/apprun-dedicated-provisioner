@@ -7,8 +7,70 @@
 - **Infrastructure as Code**: YAML ファイルでアプリケーション設定を宣言的に管理
 - **plan/apply**: Terraform 風の2段階操作で安全に変更を適用
 - **設定の継承**: YAML で指定していない項目は既存バージョンの設定を自動的に引き継ぎ
-- **image の分離**: コンテナイメージは既存バージョンから継承（CI/CD でのデプロイと設定管理を分離）
+- **image の管理**: デフォルトで YAML の image を使用（オプションで既存バージョンから継承も可能）
 - **インフラ管理**: AutoScalingGroup、LoadBalancer も YAML で管理可能
+
+## ⚠️ 破壊的変更（Breaking Changes）
+
+### v0.0.33 以降: image 更新の挙動変更
+
+**重要:** v0.0.33 以降、コンテナイメージの更新挙動が変更されました。
+
+#### 変更内容
+
+| 項目 | v0.0.32 以前 | v0.0.33 以降 |
+|------|-------------|-------------|
+| フィールド名 | `useConfigImage` | `inheritImage` |
+| デフォルト挙動 | 既存バージョンから継承 | **YAML の image を使用** |
+| オプション挙動 | `useConfigImage: true` で YAML を使用 | `inheritImage: true` で継承 |
+
+#### 移行方法
+
+既存の設定ファイルを使用している場合、以下のいずれかの対応が必要です：
+
+**パターン1: CI/CD でイメージを更新している場合（以前のデフォルト挙動を維持）**
+
+```yaml
+# v0.0.32 以前
+applications:
+  - name: "api"
+    spec:
+      # useConfigImage 省略（デフォルト: false、継承）
+      image: "myregistry/api:v1.0.0"
+      cpu: 1000
+
+# v0.0.33 以降 - inheritImage: true を追加
+applications:
+  - name: "api"
+    spec:
+      inheritImage: true  # ← 追加：既存バージョンから継承
+      image: "myregistry/api:v1.0.0"
+      cpu: 1000
+```
+
+**パターン2: YAML でイメージを管理している場合（新しいデフォルト挙動）**
+
+```yaml
+# v0.0.32 以前
+applications:
+  - name: "nginx"
+    spec:
+      useConfigImage: true  # YAML の image を使用
+      image: "nginx:latest"
+      cpu: 500
+
+# v0.0.33 以降 - useConfigImage 削除（デフォルトで YAML を使用）
+applications:
+  - name: "nginx"
+    spec:
+      # inheritImage 省略（デフォルト: false、YAML を使用）
+      image: "nginx:latest"
+      cpu: 500
+```
+
+#### この変更の理由
+
+従来の挙動では、YAML でイメージバージョンを管理する場合に毎回 `useConfigImage: true` を指定する必要があり、直感的ではありませんでした。新しい挙動では、YAML でイメージを管理することがデフォルトとなり、より自然な設定が可能になりました。
 
 ## インストール
 
@@ -263,7 +325,7 @@ applications:
       maxScale: 3
       scaleInThreshold: 30
       scaleOutThreshold: 80
-      image: "nginx:latest"  # 新規作成時のみ使用、既存アプリは継承
+      image: "nginx:latest"  # デフォルトで YAML の値を使用
       exposedPorts:
         - targetPort: 80
           loadBalancerPort: 443
@@ -328,7 +390,7 @@ applications:
 
 | 項目 | 必須 | 説明 | 継承 |
 |------|------|------|------|
-| `useConfigImage` | No | `true` の場合、`image` を config から使用。`false`（デフォルト）の場合、既存バージョンから継承 | No |
+| `inheritImage` | No | `true` の場合、既存バージョンから `image` を継承。`false`（デフォルト）の場合、config の値を使用 | No |
 | `cpu` | No | CPU (mCPU) | Yes |
 | `memory` | No | メモリ (MB) | Yes |
 | `scalingMode` | No | `manual` または `cpu` | Yes |
@@ -373,31 +435,31 @@ applications:
 
 既存のアプリケーションを更新する場合、YAML で指定していない項目は既存バージョンから自動的に継承されます。
 
-- **image**: デフォルトでは既存バージョンから継承。`useConfigImage: true` を指定すると YAML の値を使用
+- **image**: デフォルトでは YAML の値を使用。`inheritImage: true` を指定すると既存バージョンから継承
 - **その他の項目**: YAML で指定されていれば使用、省略されていれば既存を継承
 
-### image の継承と useConfigImage
+### image の管理と inheritImage
 
-| ケース | useConfigImage | 動作 |
-|--------|----------------|------|
-| nginx:latest などの公開イメージ | `true` | config の image を適用 |
-| 自前ビルドのイメージ | `false`（デフォルト） | 既存バージョンから継承（apprun-dedicated-update-image-action で更新） |
+| ケース | inheritImage | 動作 |
+|--------|--------------|------|
+| 通常のイメージ管理（推奨） | `false`（デフォルト） | config の image を適用 |
+| CI/CD でイメージを更新 | `true` | 既存バージョンから継承（apprun-dedicated-update-image-action で更新） |
 
 ```yaml
 applications:
-  # 公開イメージを使用する場合
-  - name: "nginx-proxy"
+  # 通常のイメージ管理（推奨）
+  - name: "webapp"
     spec:
-      useConfigImage: true   # config の image を使う
-      image: "nginx:latest"
-      cpu: 500
-
-  # 自前ビルドイメージの場合（CI/CD でイメージ更新）
-  - name: "my-api"
-    spec:
-      # useConfigImage 省略 → false（継承）
-      image: "myregistry/api:v1.0.0"  # 新規作成時のみ使用
+      # inheritImage 省略 → false（YAML の image を使用）
+      image: "myregistry/app:v1.2.3"
       cpu: 1000
+
+  # CI/CD でイメージを更新する場合
+  - name: "api"
+    spec:
+      inheritImage: true   # 既存バージョンから image を継承
+      image: "myregistry/api:v1.0.0"  # 新規作成時のみ使用
+      cpu: 500
 ```
 
 これにより、CI/CD でのイメージデプロイと、このツールでの設定管理を分離できます。

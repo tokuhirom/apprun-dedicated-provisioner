@@ -47,9 +47,10 @@ loadBalancers:
 applications:
   - name: "webapp"
     spec:
-      # Use the image specified in config instead of inheriting from previous version.
-      # Useful for static images like nginx:latest that don't need to be updated by CI/CD.
-      useConfigImage: true
+      # Inherit image from previous version instead of using the config value.
+      # Useful when you want to update the image via CI/CD (e.g., apprun-dedicated-update-image-action)
+      # without modifying the YAML config.
+      inheritImage: true
       cpu: 500
       memory: 1024
       scalingMode: "cpu"
@@ -78,9 +79,8 @@ applications:
 
   - name: "api"
     spec:
-      # useConfigImage is omitted (defaults to false), so the image is inherited
-      # from the previous version. Use apprun-dedicated-update-image-action to update
-      # the image via CI/CD pipeline.
+      # inheritImage is omitted (defaults to false), so the image from the config is used.
+      # This is the recommended approach for managing image versions via YAML.
       cpu: 1000
       memory: 2048
       scalingMode: "manual"
