@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.33](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.32...v0.0.33) - 2026-01-19
+- chore: update flake.nix to v0.0.32 by @tokuhirom-tagpr[bot] in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/73
+
 ## [v0.0.32](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.31...v0.0.32) - 2026-01-19
 - fix: remove checksums.txt before creating PR by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/71
 
