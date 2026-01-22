@@ -793,11 +793,12 @@ func TestApply_ImageInheritedFromExistingVersion(t *testing.T) {
 			{
 				Name: "existing-app",
 				Spec: config.ApplicationSpec{
-					CPU:         1000, // Changed
-					Memory:      1024,
-					ScalingMode: "manual",
-					FixedScale:  int32Ptr(2),
-					Image:       "different:image", // This should be ignored
+					InheritImage: true, // Inherit image from existing version
+					CPU:          1000, // Changed
+					Memory:       1024,
+					ScalingMode:  "manual",
+					FixedScale:   int32Ptr(2),
+					Image:        "different:image", // This should be ignored
 					ExposedPorts: []config.ExposedPortConfig{
 						{TargetPort: 80, LoadBalancerPort: int32Ptr(443), UseLetsEncrypt: true},
 					},
@@ -960,10 +961,10 @@ func TestApply_UpdateApplication_WithoutActivation(t *testing.T) {
 }
 
 // =============================================================================
-// UseConfigImage Tests
+// InheritImage Tests
 // =============================================================================
 
-func TestApply_UseConfigImage_UpdatesImage(t *testing.T) {
+func TestApply_InheritImage_False_UpdatesImage(t *testing.T) {
 	mockServer, client, cleanup := setupMockServer(t, "test-token", "test-secret")
 	defer cleanup()
 
@@ -995,12 +996,12 @@ func TestApply_UseConfigImage_UpdatesImage(t *testing.T) {
 			{
 				Name: "existing-app",
 				Spec: config.ApplicationSpec{
-					UseConfigImage: true, // Use image from config
-					CPU:            500,
-					Memory:         1024,
-					ScalingMode:    "manual",
-					FixedScale:     int32Ptr(2),
-					Image:          "nginx:2.0.0", // New image in config
+					InheritImage: false, // Use image from config (default)
+					CPU:          500,
+					Memory:       1024,
+					ScalingMode:  "manual",
+					FixedScale:   int32Ptr(2),
+					Image:        "nginx:2.0.0", // New image in config
 					ExposedPorts: []config.ExposedPortConfig{
 						{TargetPort: 80, LoadBalancerPort: int32Ptr(443), UseLetsEncrypt: true},
 					},
@@ -1023,7 +1024,7 @@ func TestApply_UseConfigImage_UpdatesImage(t *testing.T) {
 	assert.Equal(t, "nginx:2.0.0", newVersion.Image) // Should be from config
 }
 
-func TestApply_UseConfigImage_False_InheritsImage(t *testing.T) {
+func TestApply_InheritImage_True_InheritsImage(t *testing.T) {
 	mockServer, client, cleanup := setupMockServer(t, "test-token", "test-secret")
 	defer cleanup()
 
@@ -1055,12 +1056,12 @@ func TestApply_UseConfigImage_False_InheritsImage(t *testing.T) {
 			{
 				Name: "existing-app",
 				Spec: config.ApplicationSpec{
-					UseConfigImage: false, // Explicitly false (same as omitting)
-					CPU:            1000,  // Changed
-					Memory:         1024,
-					ScalingMode:    "manual",
-					FixedScale:     int32Ptr(2),
-					Image:          "different:image", // This should be ignored
+					InheritImage: true, // Inherit from existing version
+					CPU:          1000, // Changed
+					Memory:       1024,
+					ScalingMode:  "manual",
+					FixedScale:   int32Ptr(2),
+					Image:        "different:image", // This should be ignored
 					ExposedPorts: []config.ExposedPortConfig{
 						{TargetPort: 80, LoadBalancerPort: int32Ptr(443), UseLetsEncrypt: true},
 					},
@@ -1082,7 +1083,7 @@ func TestApply_UseConfigImage_False_InheritsImage(t *testing.T) {
 	assert.Equal(t, int64(1000), newVersion.CPU)      // Should be updated
 }
 
-func TestCreatePlan_UseConfigImage_ReportsImageChange(t *testing.T) {
+func TestCreatePlan_InheritImage_False_ReportsImageChange(t *testing.T) {
 	mockServer, client, cleanup := setupMockServer(t, "test-token", "test-secret")
 	defer cleanup()
 
@@ -1114,12 +1115,12 @@ func TestCreatePlan_UseConfigImage_ReportsImageChange(t *testing.T) {
 			{
 				Name: "existing-app",
 				Spec: config.ApplicationSpec{
-					UseConfigImage: true, // Use image from config
-					CPU:            500,
-					Memory:         1024,
-					ScalingMode:    "manual",
-					FixedScale:     int32Ptr(2),
-					Image:          "nginx:2.0.0", // Different image
+					InheritImage: false, // Use image from config (default)
+					CPU:          500,
+					Memory:       1024,
+					ScalingMode:  "manual",
+					FixedScale:   int32Ptr(2),
+					Image:        "nginx:2.0.0", // Different image
 					ExposedPorts: []config.ExposedPortConfig{
 						{TargetPort: 80, LoadBalancerPort: int32Ptr(443), UseLetsEncrypt: true},
 					},
@@ -1132,11 +1133,11 @@ func TestCreatePlan_UseConfigImage_ReportsImageChange(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, plan.Actions, 1)
 	assert.Equal(t, ActionUpdate, plan.Actions[0].Action)
-	// Image change should be reported when UseConfigImage is true
+	// Image change should be reported when InheritImage is false (default)
 	assert.Contains(t, plan.Actions[0].Changes, "Image: nginx:1.0.0 -> nginx:2.0.0")
 }
 
-func TestCreatePlan_UseConfigImage_NoChangeWhenSameImage(t *testing.T) {
+func TestCreatePlan_InheritImage_False_NoChangeWhenSameImage(t *testing.T) {
 	mockServer, client, cleanup := setupMockServer(t, "test-token", "test-secret")
 	defer cleanup()
 
@@ -1168,12 +1169,12 @@ func TestCreatePlan_UseConfigImage_NoChangeWhenSameImage(t *testing.T) {
 			{
 				Name: "existing-app",
 				Spec: config.ApplicationSpec{
-					UseConfigImage: true, // Use image from config
-					CPU:            500,
-					Memory:         1024,
-					ScalingMode:    "manual",
-					FixedScale:     int32Ptr(2),
-					Image:          "nginx:latest", // Same image
+					InheritImage: false, // Use image from config (default)
+					CPU:          500,
+					Memory:       1024,
+					ScalingMode:  "manual",
+					FixedScale:   int32Ptr(2),
+					Image:        "nginx:latest", // Same image
 					ExposedPorts: []config.ExposedPortConfig{
 						{TargetPort: 80, LoadBalancerPort: int32Ptr(443), UseLetsEncrypt: true},
 					},

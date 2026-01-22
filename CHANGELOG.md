@@ -1,7 +1,20 @@
 # Changelog
 
 ## [v0.0.33](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.32...v0.0.33) - 2026-01-19
+
+### ⚠️ BREAKING CHANGES
+
+**Image update behavior has been changed:**
+
+- **Field name**: `useConfigImage` → `inheritImage`
+- **Default behavior**: Changed from "inherit from existing version" to "use image from YAML config"
+- **Migration required**: If you were relying on the default image inheritance behavior, you must add `inheritImage: true` to your application specs
+
+See README.md for detailed migration instructions.
+
+### Changes
 - chore: update flake.nix to v0.0.32 by @tokuhirom-tagpr[bot] in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/73
+- **BREAKING**: Change image update default behavior (use config image by default, inherit optionally)
 
 ## [v0.0.32](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.31...v0.0.32) - 2026-01-19
 - fix: remove checksums.txt before creating PR by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/71
