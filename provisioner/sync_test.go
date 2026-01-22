@@ -793,8 +793,8 @@ func TestApply_ImageInheritedFromExistingVersion(t *testing.T) {
 			{
 				Name: "existing-app",
 				Spec: config.ApplicationSpec{
-					InheritImage: true,    // Inherit image from existing version
-					CPU:          1000,    // Changed
+					InheritImage: true, // Inherit image from existing version
+					CPU:          1000, // Changed
 					Memory:       1024,
 					ScalingMode:  "manual",
 					FixedScale:   int32Ptr(2),
@@ -1056,8 +1056,8 @@ func TestApply_InheritImage_True_InheritsImage(t *testing.T) {
 			{
 				Name: "existing-app",
 				Spec: config.ApplicationSpec{
-					InheritImage: true,   // Inherit from existing version
-					CPU:          1000,   // Changed
+					InheritImage: true, // Inherit from existing version
+					CPU:          1000, // Changed
 					Memory:       1024,
 					ScalingMode:  "manual",
 					FixedScale:   int32Ptr(2),
