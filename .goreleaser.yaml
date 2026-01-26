@@ -79,6 +79,17 @@ brews:
     install: |
       bin.install "apprun-dedicated-provisioner"
 
+nix:
+  - name: apprun-dedicated-provisioner
+    repository:
+      owner: tokuhirom
+      name: nur-packages
+      token: "{{ .Env.NUR_GITHUB_TOKEN }}"
+    homepage: "https://github.com/tokuhirom/apprun-dedicated-provisioner"
+    description: "CLI tool for managing Sakura Cloud AppRun Dedicated application provisioning"
+    license: "mit"
+    path: pkgs/apprun-dedicated-provisioner/default.nix
+
 release:
   github:
     owner: tokuhirom
