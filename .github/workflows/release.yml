@@ -153,9 +153,9 @@ jobs:
           git add flake.nix
           git commit -m "chore: update flake.nix for ${{ steps.version.outputs.version }}"
 
-          # Move local tag to the new commit (includes flake.nix)
+          # Move tag to include flake.nix (force push to overwrite goreleaser's tag)
           git tag -d ${{ steps.version.outputs.version }}
           git tag ${{ steps.version.outputs.version }}
 
           git push origin main
-          git push origin ${{ steps.version.outputs.version }}
+          git push origin ${{ steps.version.outputs.version }} --force
