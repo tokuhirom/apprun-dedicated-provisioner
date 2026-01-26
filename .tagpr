@@ -2,16 +2,14 @@
 # https://github.com/Songmu/tagpr
 
 [tagpr]
-# version file (optional - if you have a VERSION file)
-# versionFile = VERSION
-
 # release branch
 releaseBranch = main
 
-# version command (optional)
-# command = go version
+# Command to run before creating release PR
+# Updates flake.nix with goreleaser snapshot checksums
+command = ./scripts/update-flake.sh
 
 # labels for the release PR
 labels = release
-	vPrefix = true
-	versionFile = -
+vPrefix = true
+versionFile = -
