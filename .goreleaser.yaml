@@ -36,15 +36,13 @@ checksum:
   name_template: 'checksums.txt'
 
 changelog:
-  # Use local git history instead of GitHub API (tag may not exist on remote yet)
-  use: git
+  use: github
   sort: asc
   filters:
     exclude:
       - '^docs:'
       - '^test:'
       - '^ci:'
-      - '^chore:'
       - Merge pull request
       - Merge branch
 
