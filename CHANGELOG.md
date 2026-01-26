@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - Commit CHANGELOG before running goreleaser
 - Use app token for goreleaser to pass rulesets
 - Create local tag before goreleaser, push only after flake.nix update
+- Use local git for changelog instead of GitHub API
 
 ### Features
 
@@ -15,6 +16,7 @@ All notable changes to this project will be documented in this file.
 
 ### Miscellaneous Tasks
 
+- Update CHANGELOG for v0.1.0
 - Update CHANGELOG for v0.1.0
 ## [0.0.37] - 2026-01-26
 
