@@ -44,3 +44,71 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72 # v30
+
+      - name: Update NUR package
+        env:
+          NUR_REPO_TOKEN: ${{ secrets.NUR_REPO_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          # Convert SHA256 hex to Nix base32
+          convert_hash() {
+            local hex=$1
+            nix hash convert --hash-algo sha256 --to nix32 "$hex"
+          }
+
+          # Extract hashes from checksums.txt
+          DARWIN_ARM64_HEX=$(grep "darwin_arm64" dist/checksums.txt | awk '{print $1}')
+          DARWIN_AMD64_HEX=$(grep "darwin_amd64" dist/checksums.txt | awk '{print $1}')
+          LINUX_ARM64_HEX=$(grep "linux_arm64" dist/checksums.txt | awk '{print $1}')
+          LINUX_AMD64_HEX=$(grep "linux_amd64" dist/checksums.txt | awk '{print $1}')
+
+          # Convert to Nix base32
+          DARWIN_ARM64=$(convert_hash "$DARWIN_ARM64_HEX")
+          DARWIN_AMD64=$(convert_hash "$DARWIN_AMD64_HEX")
+          LINUX_ARM64=$(convert_hash "$LINUX_ARM64_HEX")
+          LINUX_AMD64=$(convert_hash "$LINUX_AMD64_HEX")
+
+          echo "Hashes:"
+          echo "  aarch64-darwin: $DARWIN_ARM64"
+          echo "  x86_64-darwin:  $DARWIN_AMD64"
+          echo "  aarch64-linux:  $LINUX_ARM64"
+          echo "  x86_64-linux:   $LINUX_AMD64"
+
+          # Clone nur-packages
+          git clone https://x-access-token:${NUR_REPO_TOKEN}@github.com/tokuhirom/nur-packages.git nur-packages
+          cd nur-packages
+
+          # Create or update package
+          mkdir -p pkgs/apprun-dedicated-provisioner
+          cat > pkgs/apprun-dedicated-provisioner/default.nix << 'NIXEOF'
+{ lib, mkGitHubReleaseBinary }:
+
+mkGitHubReleaseBinary {
+  pname = "apprun-dedicated-provisioner";
+  version = "VERSION_PLACEHOLDER";
+  repo = "tokuhirom/apprun-dedicated-provisioner";
+  sha256s = {
+    "aarch64-darwin" = "DARWIN_ARM64_PLACEHOLDER";
+    "x86_64-darwin"  = "DARWIN_AMD64_PLACEHOLDER";
+    "aarch64-linux"  = "LINUX_ARM64_PLACEHOLDER";
+    "x86_64-linux"   = "LINUX_AMD64_PLACEHOLDER";
+  };
+}
+NIXEOF
+          # Replace placeholders
+          sed -i "s/VERSION_PLACEHOLDER/${VERSION}/" pkgs/apprun-dedicated-provisioner/default.nix
+          sed -i "s/DARWIN_ARM64_PLACEHOLDER/${DARWIN_ARM64}/" pkgs/apprun-dedicated-provisioner/default.nix
+          sed -i "s/DARWIN_AMD64_PLACEHOLDER/${DARWIN_AMD64}/" pkgs/apprun-dedicated-provisioner/default.nix
+          sed -i "s/LINUX_ARM64_PLACEHOLDER/${LINUX_ARM64}/" pkgs/apprun-dedicated-provisioner/default.nix
+          sed -i "s/LINUX_AMD64_PLACEHOLDER/${LINUX_AMD64}/" pkgs/apprun-dedicated-provisioner/default.nix
+
+          # Commit and push
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pkgs/apprun-dedicated-provisioner/default.nix
+          git commit -m "Update apprun-dedicated-provisioner to v${VERSION}" || echo "No changes"
+          git push origin main
