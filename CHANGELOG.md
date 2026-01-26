@@ -7,10 +7,15 @@ All notable changes to this project will be documented in this file.
 
 - Commit CHANGELOG before running goreleaser
 - Use app token for goreleaser to pass rulesets
+- Create local tag before goreleaser, push only after flake.nix update
 
 ### Features
 
 - Switch to workflow_dispatch based release
+
+### Miscellaneous Tasks
+
+- Update CHANGELOG for v0.1.0
 ## [0.0.37] - 2026-01-26
 
 ### Bug Fixes
