@@ -92,7 +92,6 @@ func (m *MockServer) CreateCluster(ctx context.Context, req *api.CreateCluster) 
 		ClusterID:           clusterID,
 		Ports:               ports,
 		ServicePrincipalID:  req.ServicePrincipalID,
-		AutoScalingGroups:   []api.ReadAutoScalingGroupSummary{},
 		HasLetsEncryptEmail: req.LetsEncryptEmail.IsSet(),
 		Created:             int(time.Now().Unix()),
 	}
@@ -111,9 +110,13 @@ func (m *MockServer) ListClusters(ctx context.Context, params api.ListClustersPa
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	clusters := make([]api.ReadClusterDetail, 0, len(m.clusters))
+	clusters := make([]api.ReadClusterSummary, 0, len(m.clusters))
 	for _, c := range m.clusters {
-		clusters = append(clusters, c)
+		clusters = append(clusters, api.ReadClusterSummary{
+			Name:      c.Name,
+			ClusterID: c.ClusterID,
+			Created:   c.Created,
+		})
 	}
 
 	return &api.ListClusterResponse{
