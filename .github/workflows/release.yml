@@ -104,8 +104,6 @@ jobs:
           echo "version_number=${MAJOR}.${MINOR}.${PATCH}" >> $GITHUB_OUTPUT
 
       - name: Update CHANGELOG and commit
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -122,7 +120,7 @@ jobs:
           version: "~> v2"
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.version }}
 
@@ -148,8 +146,6 @@ jobs:
           echo "Updated flake.nix to version $VERSION"
 
       - name: Commit flake.nix and tag
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           git add flake.nix
           git commit -m "chore: update flake.nix for ${{ steps.version.outputs.version }}"
