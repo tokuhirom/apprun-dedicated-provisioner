@@ -12,12 +12,18 @@ builds:
     binary: apprun-dedicated-provisioner
     env:
       - CGO_ENABLED=0
+      # For reproducible builds
+      - SOURCE_DATE_EPOCH=0
     goos:
       - linux
       - darwin
     goarch:
       - amd64
       - arm64
+    # Reproducible builds: use fixed timestamp
+    mod_timestamp: "2000-01-01T00:00:00Z"
+    flags:
+      - -trimpath
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
