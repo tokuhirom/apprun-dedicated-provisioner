@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.34](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.33...v0.0.34) - 2026-01-26
+- feat: update OpenAPI spec to v1.1.0 and regenerate client by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/80
+
 ## [v0.0.33](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.32...v0.0.33) - 2026-01-22
 - chore: update flake.nix to v0.0.32 by @tokuhirom-tagpr[bot] in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/73
 - ⚠️ BREAKING CHANGE: Invert image inheritance default behavior by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/76
