@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.36](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.35...v0.0.36) - 2026-01-26
+- feat: update flake.nix in tagpr release PR using tagpr.command by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/85
+
 ## [v0.0.35](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.34...v0.0.35) - 2026-01-26
 - feat: update flake.nix in tagpr release PR instead of after release by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/84
 - fix: pin goreleaser version to ~> v2 by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/83
