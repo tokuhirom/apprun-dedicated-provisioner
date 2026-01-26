@@ -9,6 +9,8 @@ set -euo pipefail
 echo "Updating flake.nix for version ${TAGPR_NEXT_VERSION}"
 
 # Run goreleaser in snapshot mode to get checksums
+# Set GORELEASER_CURRENT_TAG to ensure the same version as the actual release
+export GORELEASER_CURRENT_TAG="${TAGPR_NEXT_VERSION}"
 goreleaser release --snapshot --clean
 
 # Extract version without 'v' prefix
