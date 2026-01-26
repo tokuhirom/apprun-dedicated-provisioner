@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.1.1](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.1.0...v0.1.1) - 2026-01-26
+- revert: restore tagpr-based release workflow by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/97
+- feat: add NUR package publishing via goreleaser by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/100
+
 ## [v0.0.37](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.36...v0.0.37) - 2026-01-26
 - fix: exclude extra files from archives for reproducible builds by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/87
 
