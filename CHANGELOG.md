@@ -1,140 +1,224 @@
 # Changelog
 
-## [v0.0.37](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.36...v0.0.37) - 2026-01-26
-- fix: exclude extra files from archives for reproducible builds by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/87
+All notable changes to this project will be documented in this file.
+## [0.1.0] - 2026-01-26
 
-## [v0.0.36](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.35...v0.0.36) - 2026-01-26
-- feat: update flake.nix in tagpr release PR using tagpr.command by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/85
+### Bug Fixes
 
-## [v0.0.35](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.34...v0.0.35) - 2026-01-26
-- feat: update flake.nix in tagpr release PR instead of after release by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/84
-- fix: pin goreleaser version to ~> v2 by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/83
+- Commit CHANGELOG before running goreleaser
+- Use app token for goreleaser to pass rulesets
 
-## [v0.0.34](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.33...v0.0.34) - 2026-01-26
-- feat: update OpenAPI spec to v1.1.0 and regenerate client by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/80
+### Features
 
-## [v0.0.34](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.33...v0.0.34) - 2026-01-26
-- feat: update OpenAPI spec to v1.1.0 and regenerate client by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/80
+- Switch to workflow_dispatch based release
+## [0.0.37] - 2026-01-26
 
-## [v0.0.33](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.32...v0.0.33) - 2026-01-22
-- chore: update flake.nix to v0.0.32 by @tokuhirom-tagpr[bot] in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/73
-- ⚠️ BREAKING CHANGE: Invert image inheritance default behavior by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/76
-- fix: update flake.nix workflow to commit directly to main by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/77
-- fix: use unquoted keys in goreleaserNames to avoid sed replacement by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/78
+### Bug Fixes
 
-## [v0.0.33](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.32...v0.0.33) - 2026-01-19
+- Exclude extra files from archives for reproducible builds
+## [0.0.36] - 2026-01-26
 
-### ⚠️ BREAKING CHANGES
+### Bug Fixes
 
-**Image update behavior has been changed:**
+- Ensure identical hashes between snapshot and release builds
+## [0.0.35] - 2026-01-26
 
-- **Field name**: `useConfigImage` → `inheritImage`
-- **Default behavior**: Changed from "inherit from existing version" to "use image from YAML config"
-- **Migration required**: If you were relying on the default image inheritance behavior, you must add `inheritImage: true` to your application specs
+### Bug Fixes
 
-See README.md for detailed migration instructions.
+- Use tagpr.command instead of separate workflow
+- Pin goreleaser version to ~> v2
 
-### Changes
-- chore: update flake.nix to v0.0.32 by @tokuhirom-tagpr[bot] in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/73
-- **BREAKING**: Change image update default behavior (use config image by default, inherit optionally)
+### Features
 
-## [v0.0.32](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.31...v0.0.32) - 2026-01-19
-- fix: remove checksums.txt before creating PR by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/71
+- Update flake.nix in tagpr release PR instead of after release
 
-## [v0.0.31](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.30...v0.0.31) - 2026-01-19
-- fix: use GitHub App token for flake update PR creation by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/68
+### Miscellaneous Tasks
 
-## [v0.0.30](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.29...v0.0.30) - 2026-01-19
-- fix: checkout main branch for flake update PR creation by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/65
+- Update flake.nix to v0.0.34
+## [0.0.34] - 2026-01-26
 
-## [v0.0.29](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.28...v0.0.29) - 2026-01-19
-- refactor: use goreleaser binaries for nix flake by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/63
+### Features
 
-## [v0.0.28](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.27...v0.0.28) - 2026-01-19
-- feat: add Nix flake support with gomod2nix by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/60
-- refactor: use goreleaser binaries instead of building from source by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/62
+- Update OpenAPI spec to v1.1.0 and regenerate client
 
-## [v0.0.27](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.26...v0.0.27) - 2026-01-19
-- Rename from apprun-dedicated-application-provisioner to apprun-dedicated-provisioner by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/58
+### Miscellaneous Tasks
 
-## [v0.0.26](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.25...v0.0.26) - 2026-01-19
-- Add useConfigImage option for per-application image source control by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/56
+- Update flake.nix to v0.0.33
+## [0.0.33] - 2026-01-22
 
-## [v0.0.25](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.24...v0.0.25) - 2026-01-17
-- Add Related Tools section by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/54
+### Bug Fixes
 
-## [v0.0.24](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.23...v0.0.24) - 2026-01-14
-- fix: increase deletion timeout from 5 to 10 minutes by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/52
+- Update flake.nix workflow to commit directly to main
+- Use unquoted keys in goreleaserNames to avoid sed replacement
 
-## [v0.0.23](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.22...v0.0.23) - 2026-01-14
-- feat: add infrastructure provisioning support (ASG, LB, Cluster) and dump command by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/49
+### Miscellaneous Tasks
 
-## [v0.0.22](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.21...v0.0.22) - 2026-01-14
-- fix: keep tail when truncating image name by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/47
+- Update flake.nix to v0.0.32
+## [0.0.32] - 2026-01-19
 
-## [v0.0.21](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.20...v0.0.21) - 2026-01-13
-- refactor: use r3labs/diff library for spec comparison by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/45
+### Bug Fixes
 
-## [v0.0.20](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.19...v0.0.20) - 2026-01-13
-- fix: add ScaleInThreshold and ScaleOutThreshold comparison by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/43
+- Remove checksums.txt before creating PR
+## [0.0.31] - 2026-01-19
 
-## [v0.0.19](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.18...v0.0.19) - 2026-01-13
-- fix: add detailed ExposedPorts comparison by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/41
+### Bug Fixes
 
-## [v0.0.18](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.17...v0.0.18) - 2026-01-13
-- feat: add -a short option for --app flag by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/39
+- Use GitHub App token for flake update PR creation
+## [0.0.30] - 2026-01-19
 
-## [v0.0.17](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.16...v0.0.17) - 2026-01-13
-- docs: add documentation for versions, diff, and activate commands by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/37
+### Bug Fixes
 
-## [v0.0.16](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.15...v0.0.16) - 2026-01-13
-- feat: add versions, diff, and activate commands by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/35
+- Checkout main branch for flake update PR creation
+## [0.0.29] - 2026-01-19
 
-## [v0.0.15](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.14...v0.0.15) - 2026-01-13
-- feat: improve env comparison and add secretVersion by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/33
+### Bug Fixes
 
-## [v0.0.14](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.13...v0.0.14) - 2026-01-13
-- fix: add Cmd and registryUsername comparison in change detection by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/31
+- Merge update-flake into release workflow
+## [0.0.28] - 2026-01-19
 
-## [v0.0.13](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.12...v0.0.13) - 2026-01-13
-- fix: add Cmd comparison in change detection by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/29
+### Features
 
-## [v0.0.12](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.11...v0.0.12) - 2026-01-13
-- fix: show before/after values in change messages by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/25
-- feat: support SAKURACLOUD_ACCESS_TOKEN env vars for compatibility by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/27
-- fix: show API error response body in error messages by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/28
+- Add Nix flake support with gomod2nix
 
-## [v0.0.11](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.10...v0.0.11) - 2026-01-13
-- feat: add homebrew-tap support by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/23
+### Refactor
 
-## [v0.0.10](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.9...v0.0.10) - 2026-01-13
-- fix: correct "App Run" to "AppRun" naming by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/21
+- Use goreleaser binaries instead of building from source
+## [0.0.24] - 2026-01-14
 
-## [v0.0.9](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.8...v0.0.9) - 2026-01-10
-- fix: update goreleaser config for v2.12+ compatibility by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/19
+### Bug Fixes
 
-## [v0.0.8](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.7...v0.0.8) - 2026-01-10
-- feat: add JSON Schema for configuration validation by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/17
+- Increase deletion timeout from 5 to 10 minutes
+## [0.0.23] - 2026-01-14
 
-## [v0.0.7](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.6...v0.0.7) - 2026-01-10
-- chore: add golangci-lint configuration by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/15
+### Bug Fixes
 
-## [v0.0.6](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.5...v0.0.6) - 2026-01-10
-- feat: add --version flag to display version information by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/13
+- Skip ASG/LB not defined in YAML instead of deleting
+- Use 2-space indentation for dump YAML output
+- Recreate LBs when parent ASG is being recreated
+- Resolve golangci-lint errors and update config for v2
+- Update golangci-lint install command to v2
+- Use golangci-lint-action instead of go install
+- Update golangci-lint config for v2 and use action v9
 
-## [v0.0.5](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.4...v0.0.5) - 2026-01-10
-- Fix goreleaser deprecation warnings by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/11
+### Documentation
 
-## [v0.0.4](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.3...v0.0.4) - 2026-01-10
-- Update README: reorganize installation methods by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/9
+- Remove cluster settings from README
 
-## [v0.0.3](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.2...v0.0.3) - 2026-01-10
-- Add goreleaser for binary and Docker image releases by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/6
+### Features
 
-## [v0.0.2](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/compare/v0.0.1...v0.0.2) - 2026-01-10
-- Add .gitignore and remove binary from tracking by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/5
+- Add infrastructure provisioning support (ASG, LB, Cluster) and dump command
+- Poll for LB/ASG deletion completion before proceeding
+- Add confirmation prompt before apply (like Terraform)
 
-## [v0.0.1](https://github.com/tokuhirom/apprun-dedicated-application-provisioner/commits/v0.0.1) - 2026-01-10
-- Add --activate option and CI/tagpr workflows by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/1
-- Add Git workflow rules to CLAUDE.md by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/2
-- Update tagpr workflow to use GitHub App token by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-application-provisioner/pull/3
+### Miscellaneous Tasks
+
+- Update schema.json, example.yaml and CLAUDE.md for new config
+
+### Refactor
+
+- Remove cluster settings management
+## [0.0.22] - 2026-01-14
+
+### Bug Fixes
+
+- Keep tail when truncating image name
+## [0.0.21] - 2026-01-13
+
+### Refactor
+
+- Use r3labs/diff library for spec comparison
+## [0.0.20] - 2026-01-13
+
+### Bug Fixes
+
+- Add ScaleInThreshold and ScaleOutThreshold comparison
+## [0.0.19] - 2026-01-13
+
+### Bug Fixes
+
+- Add detailed ExposedPorts comparison
+## [0.0.18] - 2026-01-13
+
+### Features
+
+- Add -a short option for --app flag
+## [0.0.17] - 2026-01-13
+
+### Documentation
+
+- Add documentation for versions, diff, and activate commands
+## [0.0.16] - 2026-01-13
+
+### Features
+
+- Add versions, diff, and activate commands
+## [0.0.15] - 2026-01-13
+
+### Features
+
+- Improve env comparison and add secretVersion
+## [0.0.14] - 2026-01-13
+
+### Bug Fixes
+
+- Add registryPasswordVersion to schema.json
+
+### Features
+
+- Add state file for registry password change detection
+
+### Refactor
+
+- Use registryPasswordVersion instead of hash
+## [0.0.13] - 2026-01-13
+
+### Bug Fixes
+
+- Add Cmd comparison in change detection
+- Add registryUsername comparison in change detection
+## [0.0.12] - 2026-01-13
+
+### Bug Fixes
+
+- Show before/after values in change messages
+- Show API error response body in error messages
+
+### Features
+
+- Support SAKURACLOUD_ACCESS_TOKEN env vars for compatibility
+## [0.0.11] - 2026-01-13
+
+### Features
+
+- Add homebrew-tap support
+## [0.0.10] - 2026-01-13
+
+### Bug Fixes
+
+- Correct "App Run" to "AppRun" naming
+## [0.0.9] - 2026-01-10
+
+### Bug Fixes
+
+- Update goreleaser config for v2.12+ compatibility
+## [0.0.8] - 2026-01-10
+
+### Features
+
+- Add JSON Schema for configuration validation
+## [0.0.7] - 2026-01-10
+
+### Miscellaneous Tasks
+
+- Add golangci-lint configuration
+
+### Styling
+
+- Fix import grouping with goimports
+## [0.0.6] - 2026-01-10
+
+### Features
+
+- Add --version flag to display version information
+## [0.0.1] - 2026-01-10
+
