@@ -15,11 +15,7 @@ import (
 )
 
 // Version information (set by goreleaser)
-var (
-	version = "dev"
-	commit  = "none"
-	date    = "unknown"
-)
+var version = "dev"
 
 type CLI struct {
 	Config  string      `short:"c" help:"Path to config file"`
@@ -37,8 +33,6 @@ type VersionFlag bool
 
 func (v VersionFlag) BeforeApply() error {
 	fmt.Printf("apprun-dedicated-provisioner %s\n", version)
-	fmt.Printf("  commit: %s\n", commit)
-	fmt.Printf("  built:  %s\n", date)
 	os.Exit(0)
 	return nil
 }
