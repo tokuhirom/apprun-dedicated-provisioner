@@ -1,0 +1,105 @@
+name: Update flake.nix on release PR
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  update-flake:
+    # Only run on tagpr release PRs
+    if: startsWith(github.head_ref, 'tagpr-from-')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        id: app-token
+        with:
+          app-id: ${{ vars.TAGPR_APP_ID }}
+          private-key: ${{ secrets.TAGPR_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Run GoReleaser (snapshot)
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --snapshot --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version from PR
+        id: version
+        run: |
+          # Extract version from PR title (e.g., "Release v0.0.35")
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          VERSION=$(echo "$PR_TITLE" | grep -oP 'v\d+\.\d+\.\d+' | head -1 || echo "")
+          if [ -z "$VERSION" ]; then
+            # Fallback: extract from CHANGELOG.md
+            VERSION=$(grep -oP '## \[v\d+\.\d+\.\d+\]' CHANGELOG.md | head -1 | grep -oP 'v\d+\.\d+\.\d+' || echo "")
+          fi
+          if [ -z "$VERSION" ]; then
+            echo "Could not determine version from PR title: $PR_TITLE"
+            exit 1
+          fi
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update flake.nix with snapshot checksums
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Extract hashes from snapshot checksums
+          LINUX_AMD64=$(grep linux_amd64 dist/checksums.txt | awk '{print $1}')
+          LINUX_ARM64=$(grep linux_arm64 dist/checksums.txt | awk '{print $1}')
+          DARWIN_AMD64=$(grep darwin_amd64 dist/checksums.txt | awk '{print $1}')
+          DARWIN_ARM64=$(grep darwin_arm64 dist/checksums.txt | awk '{print $1}')
+
+          # Update version
+          sed -i "s/version = \"[^\"]*\"/version = \"$VERSION\"/" flake.nix
+
+          # Update hashes
+          sed -i "s/\"x86_64-linux\" = \"[^\"]*\"/\"x86_64-linux\" = \"$LINUX_AMD64\"/" flake.nix
+          sed -i "s/\"aarch64-linux\" = \"[^\"]*\"/\"aarch64-linux\" = \"$LINUX_ARM64\"/" flake.nix
+          sed -i "s/\"x86_64-darwin\" = \"[^\"]*\"/\"x86_64-darwin\" = \"$DARWIN_AMD64\"/" flake.nix
+          sed -i "s/\"aarch64-darwin\" = \"[^\"]*\"/\"aarch64-darwin\" = \"$DARWIN_ARM64\"/" flake.nix
+
+          echo "Updated flake.nix to version $VERSION"
+          cat flake.nix
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet flake.nix; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add flake.nix
+          git commit -m "chore: update flake.nix for v${{ steps.version.outputs.version }}"
+          git push
