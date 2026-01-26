@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.37](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.36...v0.0.37) - 2026-01-26
+- fix: exclude extra files from archives for reproducible builds by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/87
+
 ## [v0.0.36](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.35...v0.0.36) - 2026-01-26
 - feat: update flake.nix in tagpr release PR using tagpr.command by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/85
 
