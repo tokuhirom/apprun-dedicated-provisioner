@@ -27,6 +27,10 @@ archives:
     formats:
       - tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    # Only include binaries (exclude CHANGELOG.md, README.md, LICENSE)
+    # This ensures reproducible archives for snapshot and release builds
+    files:
+      - none*
 
 checksum:
   name_template: 'checksums.txt'
