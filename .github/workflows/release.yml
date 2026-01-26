@@ -103,7 +103,7 @@ jobs:
           echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
           echo "version_number=${MAJOR}.${MINOR}.${PATCH}" >> $GITHUB_OUTPUT
 
-      - name: Update CHANGELOG and commit
+      - name: Update CHANGELOG, commit and create tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -112,6 +112,9 @@ jobs:
           git add CHANGELOG.md
           git commit -m "chore: update CHANGELOG for ${{ steps.version.outputs.version }}"
           git push origin main
+
+          # Create local tag for goreleaser (will be moved after flake.nix update)
+          git tag ${{ steps.version.outputs.version }}
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
@@ -150,10 +153,9 @@ jobs:
           git add flake.nix
           git commit -m "chore: update flake.nix for ${{ steps.version.outputs.version }}"
 
-          # Delete the tag created by goreleaser and recreate it on the new commit
-          git tag -d ${{ steps.version.outputs.version }} || true
-          git push origin :refs/tags/${{ steps.version.outputs.version }} || true
-
+          # Move local tag to the new commit (includes flake.nix)
+          git tag -d ${{ steps.version.outputs.version }}
           git tag ${{ steps.version.outputs.version }}
+
           git push origin main
           git push origin ${{ steps.version.outputs.version }}
