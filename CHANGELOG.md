@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.35](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.34...v0.0.35) - 2026-01-26
+- feat: update flake.nix in tagpr release PR instead of after release by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/84
+- fix: pin goreleaser version to ~> v2 by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/83
+
 ## [v0.0.34](https://github.com/tokuhirom/apprun-dedicated-provisioner/compare/v0.0.33...v0.0.34) - 2026-01-26
 - feat: update OpenAPI spec to v1.1.0 and regenerate client by @tokuhirom in https://github.com/tokuhirom/apprun-dedicated-provisioner/pull/80
 
