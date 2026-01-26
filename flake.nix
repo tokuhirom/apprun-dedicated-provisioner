@@ -8,14 +8,14 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     let
-      version = "0.0.37";
+      version = "0.1.0";
 
       # SHA256 hashes from goreleaser checksums.txt
       hashes = {
-        "x86_64-linux" = "3ec5a0e67d4b4fac7b0da120864957a9d32e16d01bd5df7765c7afbc783d573b";
-        "aarch64-linux" = "012355472c1ec3826a5defe9d6503f30b8fd4849b9ea5096f75e2c20f520c60b";
-        "x86_64-darwin" = "656c1e4262e496a0fca4414b5014bc4ef0c6dca77e7df56424cef2f828c445ac";
-        "aarch64-darwin" = "36ec4483bcdc6529d6843dff603be9d225207258be1e70550892f19d63281e06";
+        "x86_64-linux" = "b5b4075a3944c9e2870f2b7c7230b1093f630c107785f35148014b717280a1c9";
+        "aarch64-linux" = "9748db7c12132faf8bcbd6aa18fe33087dabafbfc7bdbb538c7757165aa5d3e3";
+        "x86_64-darwin" = "7f78bbc49d93126d8b4b4ecebcde188e8e79e93542a24b5a3dd0682fdda02c4b";
+        "aarch64-darwin" = "ec5a44b427953dcaf50b691fc222b72da11c04130da314e06b9f13962e9923f6";
       };
 
       # Map Nix system to goreleaser naming (unquoted keys to avoid sed replacement)
